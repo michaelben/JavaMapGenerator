@@ -6,14 +6,20 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.Panel;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.StringTokenizer;
 
+import javax.swing.JPanel;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+
 @SuppressWarnings("serial")
-public class GraphPanel extends Panel {
+public class GraphPanel extends JPanel implements Scrollable {
+	private int maxUnitIncrement = 1;
+	
 	public static final double TOLERANCE = 20;
 	
     int nnodes;
@@ -27,7 +33,9 @@ public class GraphPanel extends Panel {
     
     RenderingHints rh;
 
-    GraphPanel() {
+    GraphPanel(int m) {
+    	maxUnitIncrement = m;
+    	
     	this.setBackground(Color.white);
     	
     	//high rendering quality
@@ -166,7 +174,7 @@ public class GraphPanel extends Panel {
 
     @Override
     //public synchronized void update(Graphics g) {
-    public void paint(Graphics g) {
+    public void paintComponent(Graphics g) {
     	Graphics2D g2 = (Graphics2D)g;
         g2.setRenderingHints(rh);
        
@@ -241,6 +249,62 @@ public class GraphPanel extends Panel {
             n.fixed = true;
         }*/
         
+    }
+    
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(Param.getMapWidth(), Param.getMapHeight());
+    }
+
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    public int getScrollableUnitIncrement(Rectangle visibleRect,
+                                          int orientation,
+                                          int direction) {
+        //Get the current position.
+        int currentPosition = 0;
+        if (orientation == SwingConstants.HORIZONTAL) {
+            currentPosition = visibleRect.x;
+        } else {
+            currentPosition = visibleRect.y;
+        }
+
+        //Return the number of pixels between currentPosition
+        //and the nearest tick mark in the indicated direction.
+        if (direction < 0) {
+            int newPosition = currentPosition -
+                             (currentPosition / maxUnitIncrement)
+                              * maxUnitIncrement;
+            return (newPosition == 0) ? maxUnitIncrement : newPosition;
+        } else {
+            return ((currentPosition / maxUnitIncrement) + 1)
+                   * maxUnitIncrement
+                   - currentPosition;
+        }
+    }
+
+    public int getScrollableBlockIncrement(Rectangle visibleRect,
+                                           int orientation,
+                                           int direction) {
+        if (orientation == SwingConstants.HORIZONTAL) {
+            return visibleRect.width - maxUnitIncrement;
+        } else {
+            return visibleRect.height - maxUnitIncrement;
+        }
+    }
+
+    public boolean getScrollableTracksViewportWidth() {
+        return false;
+    }
+
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
+    
+    public void setMaxUnitIncrement(int pixels) {
+        maxUnitIncrement = pixels;
     }
 }
 

@@ -4,6 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedWriter;
@@ -31,14 +34,20 @@ import javax.swing.border.TitledBorder;
 
 public class MapGen {
 
-	public static final int WINDOW_WIDTH = 900;
-	public static final int WINDOW_HEIGTH = 600;
+	//public static final int WINDOW_WIDTH = 1000;
+	//public static final int WINDOW_HEIGTH = 800;
 	public static final int CONTROL_WIDTH = 320;
-	public static final int MAP_WIDTH = WINDOW_WIDTH - CONTROL_WIDTH;
+	
+	//Toolkit.getScreenSize();	screensize including system tray
+	
+	//get screen size excluding system tray
+	public static Rectangle desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();		
+	
+	//public static final int MAP_WIDTH = WINDOW_WIDTH - CONTROL_WIDTH;
 	
 	private JFrame frame;
 	private final JPanel ctlPanel = new JPanel();
-	private final GraphPanel mapPanel = new GraphPanel();
+	private final ScrollGraphPanel mapPanel = new ScrollGraphPanel();
 	private final JTextField dxfInputField = new JTextField();
 	private final JButton browseButton = new JButton("Browse...");
 	private final JButton outputDXFButton = new JButton("Output DXF");
@@ -87,11 +96,13 @@ public class MapGen {
         } catch(Exception e) {
             e.printStackTrace();
         }
-        */
+        */		
 		
 		frame = new JFrame();
 		frame.setTitle("Auto Map Generator");
-		frame.setBounds(10, 10, WINDOW_WIDTH, WINDOW_HEIGTH);
+		//frame.setBounds(10, 10, WINDOW_WIDTH, WINDOW_HEIGTH);
+		//frame.setMaximizedBounds(bounds);
+		frame.setBounds(desktopBounds);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(new BorderLayout(0, 0));
 		
@@ -113,6 +124,8 @@ public class MapGen {
 					Param param = Param.params[i];
 					NumberPicker np = paramsUI.get(i);
 					param.value = np.slider.getValue();
+					
+					mapPanel.setMapSize();
 				}
 				
 			}
@@ -190,7 +203,7 @@ public class MapGen {
 		dxfInputField.setColumns(10);
 		
 		ctlPanel.setBorder(new LineBorder(new Color(0, 0, 0)));
-		ctlPanel.setPreferredSize(new Dimension(CONTROL_WIDTH, WINDOW_WIDTH));
+		ctlPanel.setPreferredSize(new Dimension(CONTROL_WIDTH, desktopBounds.height));
 		frame.getContentPane().add(ctlPanel, BorderLayout.LINE_START);
 		
 		paramPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "Parameters", TitledBorder.LEADING, TitledBorder.TOP, null, null));
@@ -282,6 +295,7 @@ public class MapGen {
 		paramPanel.setLayout(gl_paramPanel);
 		ctlPanel.setLayout(gl_ctlPanel);
 		
+		mapPanel.setOpaque(true); //content panes must be opaque
 		frame.getContentPane().add(mapPanel, BorderLayout.CENTER);
 		
 		/*

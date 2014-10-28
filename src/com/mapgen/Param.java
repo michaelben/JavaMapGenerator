@@ -19,6 +19,7 @@ public class Param {
 		this.min = min;
 		this.def = def;
 		this.step = step;
+		this.value = def;
 	}
 	
 	public static Param[] params = {
@@ -30,4 +31,12 @@ public class Param {
 		new Param("building height divergence(m)", 100, 0, 6, 1),
 		new Param("building facade length(m)", 100, 0, 30, 1)
 	};
+	
+	public static int getMapWidth() {
+		return params[0].value;
+	}
+	
+	public static int getMapHeight() {
+		return params[1].value;
+	}
 }
