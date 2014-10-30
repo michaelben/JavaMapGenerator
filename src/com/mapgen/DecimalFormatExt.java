@@ -21,31 +21,27 @@ package com.mapgen;
  *
  */
 
-import java.text.AttributedCharacterIterator;
-import java.text.AttributedString;
-import java.text.DecimalFormat;
-import java.text.FieldPosition;
-import java.text.ParsePosition;
+import java.text.*;
 
 /**
- * A specialised NumberFormat which handles null values and empty Strings. 
+ * A specialised NumberFormat which handles null values and empty Strings.
  * This is useful in cell editors and used in StrictNumberFormatter.
- * 
+ *
  * @author Noel Grandin
  * @author Jeanette Winzenburg
  */
 @SuppressWarnings("serial")
-public class DecimalFormatExt extends  DecimalFormat {
-    
-    private  DecimalFormat childFormat;
+public class DecimalFormatExt extends DecimalFormat {
 
-    public  DecimalFormatExt() {
+    private DecimalFormat childFormat;
+
+    public DecimalFormatExt() {
         this(null);
     }
-    
-    public  DecimalFormatExt( DecimalFormat childFormat) {
+
+    public DecimalFormatExt(DecimalFormat childFormat) {
         if (childFormat == null) {
-            childFormat =  new DecimalFormat();
+            childFormat = new DecimalFormat();
         }
         this.childFormat = childFormat;
     }
@@ -75,7 +71,7 @@ public class DecimalFormatExt extends  DecimalFormat {
         }
         if (source.trim().equals("")) {
             pos.setIndex(1); // otherwise Format thinks parse failed
-            return 0;		// turn to 0, don't return null otherwise compareTo gets Null pointer exception
+            return 0;        // turn to 0, don't return null otherwise compareTo gets Null pointer exception
         }
         Number val = childFormat.parse(source, pos);
         /*
@@ -94,13 +90,13 @@ public class DecimalFormatExt extends  DecimalFormat {
 
     @Override
     public StringBuffer format(double number, StringBuffer toAppendTo,
-            FieldPosition pos) {
+                               FieldPosition pos) {
         return childFormat.format(number, toAppendTo, pos);
     }
 
     @Override
     public StringBuffer format(long number, StringBuffer toAppendTo,
-            FieldPosition pos) {
+                               FieldPosition pos) {
         return childFormat.format(number, toAppendTo, pos);
     }
 

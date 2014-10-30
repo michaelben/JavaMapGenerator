@@ -27,12 +27,12 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */ 
+ */
 
 package com.mapgen;
 
-import java.awt.*;
 import javax.swing.*;
+import java.awt.*;
 
 /* Rule.java is used by ScrollDemo.java. */
 
@@ -61,7 +61,7 @@ public class Rule extends JComponent {
     }
 
     private void setIncrementAndUnits() {
-    	/*
+        /*
         if (isMetric) {
             units = (int)((double)INCH / (double)2.54); // dots per centimeter
             increment = units;
@@ -69,8 +69,8 @@ public class Rule extends JComponent {
             units = INCH;
             increment = units / 2;
         }*/
-    	units = 100;
-    	increment = 10;
+        units = 100;
+        increment = 10;
     }
 
     public boolean isMetric() {
@@ -110,24 +110,24 @@ public class Rule extends JComponent {
         if (orientation == HORIZONTAL) {
             start = (drawHere.x / increment) * increment;
             end = (((drawHere.x + drawHere.width) / increment) + 1)
-                  * increment;
+                    * increment;
         } else {
             start = (drawHere.y / increment) * increment;
             end = (((drawHere.y + drawHere.height) / increment) + 1)
-                  * increment;
+                    * increment;
         }
 
         // Make a special case of 0 to display the number
         // within the rule and draw a units label.
         if (start == 0) {
             //text = Integer.toString(0) + (isMetric ? " cm" : " in");
-        	text = Integer.toString(0) + " m";
+            text = Integer.toString(0) + " m";
             tickLength = 10;
             if (orientation == HORIZONTAL) {
-                g.drawLine(0, SIZE-1, 0, SIZE-tickLength-1);
+                g.drawLine(0, SIZE - 1, 0, SIZE - tickLength - 1);
                 g.drawString(text, 2, 21);
             } else {
-                g.drawLine(SIZE-1, 0, SIZE-tickLength-1, 0);
+                g.drawLine(SIZE - 1, 0, SIZE - tickLength - 1, 0);
                 g.drawString(text, 9, 10);
             }
             text = null;
@@ -136,10 +136,10 @@ public class Rule extends JComponent {
 
         // ticks and labels
         for (int i = start; i < end; i += increment) {
-        	if (i % units != 0 && !isMetric)  {
-        		continue;
-        	}
-            if (i % units == 0)  {
+            if (i % units != 0 && !isMetric) {
+                continue;
+            }
+            if (i % units == 0) {
                 tickLength = 10;
                 //text = Integer.toString(i/units);
                 text = Integer.toString(i);
@@ -150,13 +150,13 @@ public class Rule extends JComponent {
 
             if (tickLength != 0) {
                 if (orientation == HORIZONTAL) {
-                    g.drawLine(i, SIZE-1, i, SIZE-tickLength-1);
+                    g.drawLine(i, SIZE - 1, i, SIZE - tickLength - 1);
                     if (text != null)
-                        g.drawString(text, i-8, 21);
+                        g.drawString(text, i - 8, 21);
                 } else {
-                    g.drawLine(SIZE-1, i, SIZE-tickLength-1, i);
+                    g.drawLine(SIZE - 1, i, SIZE - tickLength - 1, i);
                     if (text != null)
-                        g.drawString(text, 2, i+3);
+                        g.drawString(text, 2, i + 3);
                 }
             }
         }

@@ -11,21 +11,6 @@ public class Matrix {
         this.rows = value;
     }
 
-    int apply(int x, int y) {
-        return rows[x - 1].apply(y);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder result = new StringBuilder();
-        String prefix = "";
-        for (Vector row : rows) {
-            result.append(prefix).append(row.toString());
-            prefix = System.lineSeparator();
-        }
-        return result.toString();
-    }
-    
     static Matrix perms(Vector vector) {
         int[] indices = new int[vector.length()];
         for (int i = 0; i < vector.length(); i++)
@@ -57,5 +42,20 @@ public class Matrix {
                 permutation(newPrefix, newRemaining, returnValue);
             }
         }
+    }
+
+    int apply(int x, int y) {
+        return rows[x - 1].apply(y);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+        String prefix = "";
+        for (Vector row : rows) {
+            result.append(prefix).append(row.toString());
+            prefix = System.lineSeparator();
+        }
+        return result.toString();
     }
 }
