@@ -4,7 +4,7 @@ function [roadCentre NumberOfRoads] = minDistanceRoad(NumberOfRoads ,roadWidth ,
 
 change = 1;
 roadCentre
-pause;
+%pause;
 while (sum(change) ~= 0)
     change = [];
     for i = 1:NumberOfRoads-1
@@ -30,10 +30,10 @@ end
         roadCentre
         NumberOfRoads
         roadWidth
-        pause;
+        %pause;
         for i = 2:NumberOfRoads
             i
-            pause;
+            %pause;
             change = 1; times = 0;
             while ((sum(change) ~= 0) & (times < 10*NumberOfRoads))
                 change = [];
@@ -57,7 +57,7 @@ end
                     NumberOfRoads
                     disp('Attention: Reduction of the number of roads');
                     NumberOfRoads = i
-                    pause;
+                    %pause;
                 end;
                 
                end;

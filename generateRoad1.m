@@ -74,9 +74,9 @@ for q = 1:NumberOfRoads
     %[nx ny,sx,sy,theta] = myRotateRoad_old(xRoad,yRoad,roadCentre(q),xSubRoad,ySubRoad,NumberOfRoads);
    
     [nx,ny] = myRotateRoad(xRoad,yRoad,roadCentre(q))           %PROSOXH
-    figure(40); hold on; plot(nx, ny, 'r*');
+    %figure(40); hold on; plot(nx, ny, 'r*');
     D = [nx ny];        %AYTO BASIKA EIXE SBHSEI O XRHSTOS!!!!!
-    pause;
+    %pause;
     % elegxos an oi nees syntetagmenes twn dromwn ksepernoun ta oria ths
     % perioxhs pou exoume 8esei [xMargin yMargin]
     

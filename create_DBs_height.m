@@ -85,7 +85,7 @@ L = find( q1 == 1);
 B = B1(L,:);
 
 
-figure,hold on
+%figure,hold on
 voro_Points = [B ;tempD ;wpRoad1];
 [v c] = voronoin(voro_Points);
 
@@ -95,7 +95,7 @@ voro_Points = [B ;tempD ;wpRoad1];
 %[xc yc] = voronoi_new(C(:,1),C(:,2));
 
 
-axis([0 xMargin 0 yMargin])
+%axis([0 xMargin 0 yMargin])
 
 %- VRISKEI TOUS DROMOUS -%
 %N = length(B) + length(tempD);
@@ -156,18 +156,20 @@ end
 % elegxos ean ta ktiria pou vriskontai oriaka ston kyriws dromo (Road) peftoun mesa ston
 % mikrotero dromo (smRoad)
 for i = length(B)+1:length(B)+length(tempD)
-    temp = c{i};
-        if (temp(1) ~= temp(end))
-            c{i} = [c{i} temp(1)];  % KLEISIMO SXHMATWN 
-        end
+    if(~isempty(c{i}))
+        temp = c{i};
+            if (temp(1) ~= temp(end))
+                c{i} = [c{i} temp(1)];  % KLEISIMO SXHMATWN 
+            end
         
-    for k = 1:length(smRoad)    
-        [x2 y2] = polyxpoly(v(c{i},1),v(c{i},2),smRoad{k,1},smRoad{k,2});
-        if (isempty([x2 y2]) == 0)
-            %plot(v(c{i},1),v(c{i},2),'r-')
-            ind2 = [ind2 i];
+        for k = 1:length(smRoad)    
+            [x2 y2] = polyxpoly(v(c{i},1),v(c{i},2),smRoad{k,1},smRoad{k,2});
+            if (isempty([x2 y2]) == 0)
+                %plot(v(c{i},1),v(c{i},2),'r-')
+                ind2 = [ind2 i];
+            end
         end
-    end
+    endif
 end
 
             
@@ -204,7 +206,9 @@ end
 % ypologizoume to emvado ka8e ktiriou
 for i = 1:length(builds)
     temp = builds{i};
-    buildArea(i) = polyarea(temp(:,1),temp(:,2));
+    if(~isempty(temp))
+        buildArea(i) = polyarea(temp(:,1),temp(:,2));
+    endif
 end
 
 
@@ -233,31 +237,32 @@ for i = 1:length(tb)
 end
 buildArea(index) = [];
 % ----------------------------- TELOS SXOLIOU --------------------------- %
-figure(1),hold on
+%figure(1),hold on
 
-length(builds)
+length(builds);
 
 for i = 1:length(builds)
     temp = builds{i};
-    plot(temp(:,1),temp(:,2),'k-')
+    %plot(temp(:,1),temp(:,2),'k-');
 end
-axis image;
+%axis image;
 
-pause;
+%pause;
 
-answ = input('8eleis na sinexiseis ? (y/n) : ','s');
-if ( answ == 'n')
-    return
-end
+%answ = input('8eleis na sinexiseis ? (y/n) : ','s');
+%if ( answ == 'n')
+%    return
+%end
 
 
 % ----------------------------------------------------------------------- %
 % dimiourgia tis vasis dedomenwn me diaforetika ypsh
 % ana8etoume se ka8e ktirio kai apo ena ypsos 
 h = [];
+builds_len = length(builds);
 for k = 1:number_of_DBs
 
-    for i = 1:length(builds)
+    for i = 1:builds_len
         % tyxaia eksagwgh ypsous apo mia kanonikh-Gaussian katanomi me mesi
         % timh (heightMean) kai typikh apoklish (heightStd) pou exoun oristei apo ton xrhsth
     
@@ -273,6 +278,7 @@ for k = 1:number_of_DBs
         % ana8etoume se ka8e ktirio kai apo ena ypsos kai apo8ikevoume tis
         % sintetagmenes twn ktiriwn (X,Y,Z) se ena cell array "builds"
         temp(:,3) = height*ones(length(temp),1);
+
         builds{i} = temp;
         
     end
@@ -290,9 +296,9 @@ end
 max_height
 
 
-figure(2),hold on
+%figure(2),hold on
 for i = 1:length(builds)
     temp = builds{i};
-    plot(temp(:,1),temp(:,2),'k-')
+    %plot(temp(:,1),temp(:,2),'k-')
 end
-axis('image')
+%axis('image')
