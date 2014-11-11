@@ -19,6 +19,8 @@ import math.geom2d.polygon.MultiPolygon2D;
 import math.geom2d.polygon.Polygon2D;
 import math.geom2d.polygon.Polygons2D;
 import math.geom2d.polygon.SimplePolygon2D;
+import megamu.mesh.MPolygon;
+import megamu.mesh.Voronoi;
 
 import org.ejml.data.DenseMatrix64F;
 import org.ejml.equation.Equation;
@@ -26,10 +28,6 @@ import org.ejml.ops.CommonOps;
 import org.ejml.simple.SimpleMatrix;
 
 import com.mapgen.Param;
-
-import delaunay.Pnt;
-import delaunay.Triangle;
-import delaunay.Triangulation;
 
 public class MapGenData {
 	int numRoads;
@@ -54,9 +52,9 @@ public class MapGenData {
 	
 	private DenseMatrix64F B1;
 	private DenseMatrix64F B;
-	private DenseMatrix64F voro_Points;
+	private float[][] voro_Points;
 	public DenseMatrix64F v;
-	public ArrayList<ArrayList<Integer>> c;
+	public ArrayList<ArrayList<Integer>> c = new ArrayList();
 	public ArrayList<Integer> ind;
 	public ArrayList<Double> heights;
 
@@ -101,30 +99,29 @@ public class MapGenData {
 		System.out.println("tempD="+tempD.getNumRows());
 		System.out.println("wpRoad1="+wpRoad1.getNumRows());
 		
-		voro_Points = new DenseMatrix64F(B.getNumRows()+tempD.getNumRows()+wpRoad1.getNumRows(), 2);
+		voro_Points = new float[B.getNumRows()+tempD.getNumRows()+wpRoad1.getNumRows()][2];
 		for(int i=0; i<B.getNumRows(); i++) {
-			voro_Points.set(i, 0, B.get(i, 0));
-			voro_Points.set(i, 1, B.get(i, 1));
+			voro_Points[i][0] = (float)B.get(i, 0);
+			voro_Points[i][1] = (float)B.get(i, 1);
 		}
 		for(int i=0; i<tempD.getNumRows(); i++) {
-			voro_Points.set(i+B.getNumRows(), 0, tempD.get(i, 0));
-			voro_Points.set(i+B.getNumRows(), 1, tempD.get(i, 1));
+			voro_Points[i+B.getNumRows()][0] = (float)tempD.get(i, 0);
+			voro_Points[i+B.getNumRows()][1] = (float)tempD.get(i, 1);
 		}
 		for(int i=0; i<wpRoad1.getNumRows(); i++) {
-			voro_Points.set(i+B.getNumRows()+tempD.getNumRows(), 0, wpRoad1.get(i, 0));
-			voro_Points.set(i+B.getNumRows()+tempD.getNumRows(), 1, wpRoad1.get(i, 1));
+			voro_Points[i+B.getNumRows()+tempD.getNumRows()][0] = (float)wpRoad1.get(i, 0);
+			voro_Points[i+B.getNumRows()+tempD.getNumRows()][1] = (float)wpRoad1.get(i, 1);
 		}
-        
-        c = new ArrayList<ArrayList<Integer>>();
-        
-        ArrayList<Pnt> total = new ArrayList<Pnt>();        
-		voronoin(voro_Points, total, c);
+           
+		Voronoi myvoronoi= new Voronoi(voro_Points);
+
+		c.clear();
 		
-        v = toMatrix(total);
+        v = getVC(myvoronoi);
 		
         //System.out.println("voro_Points="+voro_Points);
-        System.out.println("voro_Points="+voro_Points.getNumRows());
-		System.out.println("total="+total.size());
+        System.out.println("voro_Points="+voro_Points.length);
+		System.out.println("total="+v.getNumRows());
 		System.out.println("c="+c.size());
 		
 		int N = B.getNumRows();
@@ -619,65 +616,55 @@ public class MapGenData {
 		
 		return poly.contains(x, y);
 	}
-
-	/* given a set of pnts, return a set of facets which are voronoi diagram
-	 * input: pnts
-	 * output: vertices, all vertices comprising voronio diagram
-	 * output: facets, all facets each of which comprising a set of vertices
-	 */
-	public void voronoin(DenseMatrix64F pnts, ArrayList<Pnt> total, ArrayList<ArrayList<Integer>> facets) {
-		Triangle initialTriangle = new Triangle(
-	            new Pnt(-initialSize, -initialSize),
-	            new Pnt( initialSize, -initialSize),
-	            new Pnt(           0,  initialSize));
-		Triangulation dt = new Triangulation(initialTriangle);
+	
+	public DenseMatrix64F getVC(Voronoi myvoronoi) {
+		MPolygon[] myRegions = myvoronoi.getRegions();
+		int total = 0;
 		
-		for(int i=0; i<pnts.getNumRows(); i++) {
-			Pnt point = new Pnt(pnts.get(i,0), pnts.get(i,1));
-			dt.delaunayPlace(point);
+		for(int i=0; i<myRegions.length; i++)
+			total += myRegions[i].getCoords().length;
+		
+		ArrayList<Point2D> totalp = new ArrayList();
+		
+		for(int i=0; i<myRegions.length; i++) {
+			ArrayList<Integer> facet = new ArrayList();
+			float[][] regionCoordinates = myRegions[i].getCoords();
+			for(int j=0; j<regionCoordinates.length; j++) {
+				int index = exist(totalp, regionCoordinates[i]);
+				if(index != -1) {
+					facet.add(index);
+				} else {
+					totalp.add(new Point2D(regionCoordinates[i][0], regionCoordinates[i][1]));
+					facet.add(totalp.size()-1);
+				}
+			}
+			
+			c.add(facet);
 		}
 		
-        HashSet<Pnt> done = new HashSet<Pnt>(initialTriangle);
-        
-        for (Triangle triangle : dt)
-            for (Pnt site: triangle) {
-                if (done.contains(site)) continue;
-                
-                done.add(site);
-                
-                ArrayList<Integer> facet = new ArrayList();
-                
-                List<Triangle> list = dt.surroundingTriangles(site, triangle);
-                for (Triangle tri: list) {
-                	Pnt center = tri.getCircumcenter();
-                	int index = index(center, total);
-                	if(index != -1)
-                		facet.add(index);
-                	else {
-                		total.add(center);
-                		facet.add(total.size() - 1);
-                	}
-                }
-                
-                facets.add(facet);
-            }
-        
-        System.out.println("sites="+done.size());
+		return toMatrix(totalp);
 	}
 	
-	private int index(Pnt pnt, ArrayList<Pnt> pnts) {
-		for (int i = 0; i < pnts.size(); i++)
-			if(pnts.get(i).equals(pnt)) return i;
+	private int exist(ArrayList<Point2D> pts, float[] coord) {
+		for(int i=0; i<pts.size(); i++) {
+			float x = coord[0];
+			float y = coord[1];
+			if((x == pts.get(i).getX()) && (y == pts.get(i).getY()))
+					return i;
+			else continue;
+		}
 		
 		return -1;
 	}
 	
-	public DenseMatrix64F toMatrix(ArrayList<Pnt> pnts) {
-		DenseMatrix64F res = new DenseMatrix64F(pnts.size(), 2);
-		for(int i = 0; i < pnts.size(); i++) {
-			res.set(i, 0, pnts.get(i).coord(0));
-			res.set(i, 1, pnts.get(i).coord(1));
+	private DenseMatrix64F toMatrix(ArrayList<Point2D> pts) {
+		DenseMatrix64F res = new DenseMatrix64F(pts.size(), 2);
+		
+		for(int i=0; i<pts.size(); i++) {
+			res.set(i, 0, pts.get(i).getX());
+			res.set(i, 1, pts.get(i).getY());
 		}
+		
 		return res;
 	}
 	
