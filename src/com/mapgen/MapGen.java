@@ -5,14 +5,21 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.GraphicsEnvironment;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +38,12 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
+
+import math.geom2d.Point2D;
+
+import org.ejml.ops.ReadCsv;
+
+import com.mapgen.map.MapGenData;
 
 public class MapGen {
 
@@ -57,6 +70,8 @@ public class MapGen {
 	private final JButton genmapButton = new JButton("Generate Map");
 	
 	ArrayList<NumberPicker> paramsUI = new ArrayList<NumberPicker>();
+	
+	public MapGenData mapData = new MapGenData();
 	
 
 	/**
@@ -124,9 +139,12 @@ public class MapGen {
 					Param param = Param.params[i];
 					NumberPicker np = paramsUI.get(i);
 					param.value = np.slider.getValue();
-					
-					mapPanel.setMapSize();
 				}
+				
+				mapPanel.setMapSize();
+				
+				mapData.generateMap();
+				//mapData.readCsv("d:\\iso\\csv");
 				
 			}
 		});
@@ -178,25 +196,9 @@ public class MapGen {
 					 if(ret != JOptionPane.OK_OPTION) return;
 				}
 				
-				try {
-					writer = new BufferedWriter(new FileWriter(fn));
-					writer.write("test", 0, 4);
-					
-					JOptionPane.showMessageDialog(frame, "DXF File saved.");
-						
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} finally {
-		            if (writer != null) {
-		                try {
-		                	writer.close();
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-		            }
-				}
+				mapData.createDXFile(fn, 1);
+				
+				JOptionPane.showMessageDialog(frame, "DXF File saved.");
 			}
 		});
 		

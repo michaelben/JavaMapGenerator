@@ -1,13 +1,13 @@
 package com.mapgen;
 
 public class Param {
-	String label;
-	int max;
-	int min;
-	int def;
-	int step;
+	public String label;
+	public int max;
+	public int min;
+	public int def;
+	public int step;
 	
-	int value;
+	public int value;
 	
 	public Param() {
 		this("Parameter", 100, 0, 50, 1);

@@ -1,4 +1,4 @@
-package com.mapgen;
+package com.mapgen.map;
 
 import java.util.ArrayList;
 import java.util.Arrays;

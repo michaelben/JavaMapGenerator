@@ -1,4 +1,4 @@
-package com.mapgen;
+package com.mapgen.map;
 
 public class Vector {
     private int[] value;

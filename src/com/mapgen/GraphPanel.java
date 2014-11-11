@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -15,6 +16,8 @@ import java.util.StringTokenizer;
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
+
+import com.mapgen.map.MapGenData;
 
 @SuppressWarnings("serial")
 public class GraphPanel extends JPanel implements Scrollable {
@@ -179,6 +182,16 @@ public class GraphPanel extends JPanel implements Scrollable {
         g2.setRenderingHints(rh);
        
         Dimension d = getSize();
+        
+        g.setColor(getBackground());
+        g.fillRect(0, 0, d.width, d.height);
+        
+        g.setColor(edgeColor);
+        for(Polygon p: MapGenData.builds)
+        	g.drawPolygon(p);
+        
+        /*
+        Dimension d = getSize();
         if ((offscreen == null) || (d.width != offscreensize.width)
                 || (d.height != offscreensize.height)) {
             offscreen = createImage(d.width, d.height);
@@ -210,6 +223,7 @@ public class GraphPanel extends JPanel implements Scrollable {
                 offgraphics.setColor(edgeColor);
             }
         }
+        */
 
         /*
         FontMetrics fm = offgraphics.getFontMetrics();
@@ -217,7 +231,7 @@ public class GraphPanel extends JPanel implements Scrollable {
             paintNode(offgraphics, nodes[i], fm);
         }
         */
-        g.drawImage(offscreen, 0, 0, null);
+        //g.drawImage(offscreen, 0, 0, null);
     }
 
     public void init() {
