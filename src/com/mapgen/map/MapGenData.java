@@ -1,17 +1,13 @@
 package com.mapgen.map;
 
-import java.awt.Point;
 import java.awt.Polygon;
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
 
 import math.geom2d.Point2D;
@@ -19,26 +15,27 @@ import math.geom2d.polygon.MultiPolygon2D;
 import math.geom2d.polygon.Polygon2D;
 import math.geom2d.polygon.Polygons2D;
 import math.geom2d.polygon.SimplePolygon2D;
-import megamu.mesh.MPolygon;
-import megamu.mesh.Voronoi;
 
 import org.ejml.data.DenseMatrix64F;
-import org.ejml.equation.Equation;
 import org.ejml.ops.CommonOps;
 import org.ejml.simple.SimpleMatrix;
 
 import com.mapgen.Param;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
 
 public class MapGenData {
 	int numRoads;
 	SimpleMatrix roadCentre;
-	DenseMatrix64F tempD;
 
-	ArrayList<ArrayList<Point2D>> roads = new ArrayList();
-	ArrayList<ArrayList<Point2D>> wpRoads = new ArrayList();
-	ArrayList<ArrayList<Point2D>> smRoads = new ArrayList();
+	ArrayList<ArrayList<Point2D>> roads = new ArrayList<ArrayList<Point2D>>();
+	ArrayList<ArrayList<Point2D>> wpRoads = new ArrayList<ArrayList<Point2D>>();
+	ArrayList<ArrayList<Point2D>> smRoads = new ArrayList<ArrayList<Point2D>>();
+	DenseMatrix64F tempD;
 	DenseMatrix64F wpRoad1;
-	DenseMatrix64F D;
+	//DenseMatrix64F D;
 	int numD;
 	double maxHeight;
 	
@@ -112,21 +109,52 @@ public class MapGenData {
 			voro_Points[i+B.getNumRows()+tempD.getNumRows()][0] = (float)wpRoad1.get(i, 0);
 			voro_Points[i+B.getNumRows()+tempD.getNumRows()][1] = (float)wpRoad1.get(i, 1);
 		}
-           
-		Voronoi myvoronoi= new Voronoi(voro_Points);
 
+		ArrayList<Point2D> pts = new ArrayList();
+		for(ArrayList<Point2D> ps : roads) {
+			for(Point2D p: ps) {
+				if(exist(pts, p) >= 0) continue;
+				else pts.add(p);
+			}
+		}
+		
+		System.out.println("num of distinct points in roads="+pts.size());
+		
+		pts = new ArrayList();
+		for(ArrayList<Point2D> ps : wpRoads) {
+			for(Point2D p: ps) {
+				if(exist(pts, p) >= 0) continue;
+				else pts.add(p);
+			}
+		}
+		
+		System.out.println("num of distinct points in wpRoads="+pts.size());
+		
+		pts = new ArrayList();
+		for(float[] p : voro_Points) {
+			if(exist(pts, p) >= 0) continue;
+			else pts.add(new Point2D(p[0], p[1]));
+		}
+		
+		System.out.println("num of distinct points="+pts.size());
+		
+		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
+		//vb.setTolerance(0);	//no snapping
+		vb.setSites(toCoords(voro_Points));
+		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
+		
 		c.clear();
 		
-        v = getVC(myvoronoi);
+        v = getVC(faces);
 		
         //System.out.println("voro_Points="+voro_Points);
+        System.out.println("faces="+faces.getNumGeometries());
         System.out.println("voro_Points="+voro_Points.length);
 		System.out.println("total="+v.getNumRows());
 		System.out.println("c="+c.size());
 		
 		int N = B.getNumRows();
 
-        /*
 		ArrayList<Integer> ind1 = new ArrayList();
 		ArrayList<Integer> ind2 = new ArrayList();
 		ArrayList<Integer> ind3 = new ArrayList();
@@ -231,26 +259,45 @@ public class MapGenData {
 		        heights.add(height);
 		}
 
-		
+		FileWriter csvfacets = null;
+	    
+	    try {
+	    	csvfacets = new FileWriter("d:\\iso\\csvfacets");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
 		//create builds for draw
 		for(int i=0; i<ind.size(); i++) {
+			try {
+				csvfacets.write(String.format("%d\n", i));
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 			Polygon p = new Polygon();
 			ArrayList<Integer> pind = c.get(ind.get(i));
-			for(int j=0; j<pind.size(); j++)
+			for(int j=0; j<pind.size(); j++) {
 				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
+				try {
+					csvfacets.write(String.format("%f,%f\n", v.get(j, 0), v.get(j, 1)));
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			builds.add(p);
 		}
 		
-		*/
-        
-		//create builds for draw
-		for(int i=0; i<c.size(); i++) {
-			Polygon p = new Polygon();
-			ArrayList<Integer> pind = c.get(i);
-			for(int j=0; j<pind.size(); j++)
-				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
-			builds.add(p);
+		try {
+			csvfacets.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
+		System.out.println("builds#="+builds.size());
 	}
 	
 	public void generateRoads() {
@@ -273,9 +320,9 @@ public class MapGenData {
 	    ArrayList<Point2D> D2 = new ArrayList();
 	    ArrayList<Point2D> D3 = new ArrayList();
 	    ArrayList<Point2D> D = new ArrayList();
-	    ArrayList<Point2D> road = new ArrayList();
-	    ArrayList<Point2D> wpRoad = new ArrayList();
-	    ArrayList<Point2D> smRoad = new ArrayList();
+	    ArrayList<Point2D> road;
+	    ArrayList<Point2D> wpRoad;
+	    ArrayList<Point2D> smRoad;
 	    
 	    FileWriter csvroad = null;
 	    
@@ -316,6 +363,14 @@ public class MapGenData {
 			    
 			    D = myRotateRoad(D, roadCentre.get(q));
 
+			    ArrayList<Point2D> pts = new ArrayList();
+				for(Point2D p : D) {
+					if(exist(pts, p) >= 0) continue;
+					else pts.add(p);
+				}
+				
+				System.out.println("num of distinct points in D="+pts.size());
+				
 			    for(int i=0; i<D.size(); i++)
 					try {
 						csvroad.write(String.format("%f,%f\n", D.get(i).getX(), D.get(i).getY()));
@@ -326,7 +381,7 @@ public class MapGenData {
 			    	
 			    numD = D1.size();
 
-			    road.clear();
+			    road = new ArrayList<Point2D>();
 			    road.addAll(D.subList(0, numD));
 			    for(int i = 2*numD-1; i >= numD; i--)
 			    	road.add(D.get(i));
@@ -334,12 +389,12 @@ public class MapGenData {
 			    
 			    roads.add(road);
 
-			    wpRoad.clear();;
+			    wpRoad = new ArrayList<Point2D>();
 			    wpRoad.addAll(D.subList(2*numD, D.size()));
 			    
 			    wpRoads.add(wpRoad);
 			    
-			    smRoad.clear();
+			    smRoad = new ArrayList<Point2D>();
 			    for(int i = 0; i < numD; i++)
 			    	smRoad.add(new Point2D((road.get(i).getX() + wpRoad.get(i).getX())/2 + 1,
 			    			(road.get(i).getY() + wpRoad.get(i).getY())/2 + 1));
@@ -358,6 +413,26 @@ public class MapGenData {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		ArrayList<Point2D> pts = new ArrayList();
+		for(ArrayList<Point2D> ps : roads) {
+			for(Point2D p: ps) {
+				if(exist(pts, p) >= 0) continue;
+				else pts.add(p);
+			}
+		}
+		
+		System.out.println("num of distinct points in roads="+pts.size());
+		
+		pts = new ArrayList();
+		for(ArrayList<Point2D> ps : wpRoads) {
+			for(Point2D p: ps) {
+				if(exist(pts, p) >= 0) continue;
+				else pts.add(p);
+			}
+		}
+		
+		System.out.println("num of distinct points in wpRoads="+pts.size());
 	}
 	
 	public ArrayList<Point2D> myRotateRoad(ArrayList<Point2D> D, double roadCenter) {
@@ -617,24 +692,32 @@ public class MapGenData {
 		return poly.contains(x, y);
 	}
 	
-	public DenseMatrix64F getVC(Voronoi myvoronoi) {
-		MPolygon[] myRegions = myvoronoi.getRegions();
+	public ArrayList<Coordinate> toCoords(float[][] pts) {
+		ArrayList<Coordinate> coords = new ArrayList();
+		for(int i=0; i<pts.length; i++)
+			coords.add(new Coordinate(pts[i][0], pts[i][1]));
+		
+		return coords;
+	}
+	
+	public DenseMatrix64F getVC(GeometryCollection polygons) {
+		int numPolygons = polygons.getNumGeometries();
 		int total = 0;
 		
-		for(int i=0; i<myRegions.length; i++)
-			total += myRegions[i].getCoords().length;
+		for(int i=0; i<numPolygons; i++)
+			total += polygons.getGeometryN(i).getNumPoints();
 		
 		ArrayList<Point2D> totalp = new ArrayList();
 		
-		for(int i=0; i<myRegions.length; i++) {
+		for(int i=0; i<numPolygons; i++) {
 			ArrayList<Integer> facet = new ArrayList();
-			float[][] regionCoordinates = myRegions[i].getCoords();
+			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
 			for(int j=0; j<regionCoordinates.length; j++) {
-				int index = exist(totalp, regionCoordinates[i]);
+				int index = exist(totalp, regionCoordinates[j]);
 				if(index != -1) {
 					facet.add(index);
 				} else {
-					totalp.add(new Point2D(regionCoordinates[i][0], regionCoordinates[i][1]));
+					totalp.add(new Point2D(regionCoordinates[j].x, regionCoordinates[j].y));
 					facet.add(totalp.size()-1);
 				}
 			}
@@ -645,10 +728,36 @@ public class MapGenData {
 		return toMatrix(totalp);
 	}
 	
+	private int exist(ArrayList<Point2D> pts, Point2D coord) {
+		for(int i=0; i<pts.size(); i++) {
+			double x = coord.getX();
+			double y = coord.getY();
+			if((x == pts.get(i).getX()) && (y == pts.get(i).getY())) {
+				System.out.println("x="+x+", y="+y);
+					return i;
+			}
+			else continue;
+		}
+		
+		return -1;
+	}
+	
+	private int exist(ArrayList<Point2D> pts, Coordinate coord) {
+		for(int i=0; i<pts.size(); i++) {
+			double x = coord.x;
+			double y = coord.y;
+			if((x == pts.get(i).getX()) && (y == pts.get(i).getY()))
+					return i;
+			else continue;
+		}
+		
+		return -1;
+	}
+	
 	private int exist(ArrayList<Point2D> pts, float[] coord) {
 		for(int i=0; i<pts.size(); i++) {
-			float x = coord[0];
-			float y = coord[1];
+			double x = coord[0];
+			double y = coord[1];
 			if((x == pts.get(i).getX()) && (y == pts.get(i).getY()))
 					return i;
 			else continue;

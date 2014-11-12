@@ -6,8 +6,6 @@
 	<classpathentry kind="lib" path="D:/workspace/JavaMapGenerator/lib/EJML-core-0.26.jar"/>
 	<classpathentry kind="lib" path="D:/workspace/JavaMapGenerator/lib/EJML-equation-0.26.jar"/>
 	<classpathentry kind="lib" path="D:/workspace/JavaMapGenerator/lib/javaGeom-0.11.2.jar"/>
-	<classpathentry kind="lib" path="lib/mesh.jar"/>
-	<classpathentry kind="lib" path="lib/quickhull3d.1.4.jar"/>
-	<classpathentry kind="lib" path="lib/core.jar"/>
+	<classpathentry kind="lib" path="lib/jts-1.13.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
