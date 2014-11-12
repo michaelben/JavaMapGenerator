@@ -258,6 +258,12 @@ public class MapGenData {
 
 		        heights.add(height);
 		}
+		
+		createBuild();
+
+	}
+	
+	private void createBuild() {
 
 		FileWriter csvfacets = null;
 	    
@@ -269,7 +275,8 @@ public class MapGenData {
 		}
 	    
 		//create builds for draw
-		for(int i=0; i<ind.size(); i++) {
+		//for(int i=0; i<ind.size(); i++) {
+	    for(int i=0; i<c.size(); i++) {
 			try {
 				csvfacets.write(String.format("%d\n", i));
 			} catch (IOException e1) {
@@ -277,7 +284,7 @@ public class MapGenData {
 				e1.printStackTrace();
 			}
 			Polygon p = new Polygon();
-			ArrayList<Integer> pind = c.get(ind.get(i));
+			ArrayList<Integer> pind = c.get(i);
 			for(int j=0; j<pind.size(); j++) {
 				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
 				try {
