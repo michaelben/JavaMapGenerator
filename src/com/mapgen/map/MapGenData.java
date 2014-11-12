@@ -129,7 +129,6 @@ public class MapGenData {
 		
 		int N = B.getNumRows();
 
-        /*
 		ArrayList<Integer> ind1 = new ArrayList();
 		ArrayList<Integer> ind2 = new ArrayList();
 		ArrayList<Integer> ind3 = new ArrayList();
@@ -235,18 +234,18 @@ public class MapGenData {
 		}
 
 		
-		//create builds for draw
+		/*
+		//create valid builds for draw
 		for(int i=0; i<ind.size(); i++) {
 			Polygon p = new Polygon();
 			ArrayList<Integer> pind = c.get(ind.get(i));
 			for(int j=0; j<pind.size(); j++)
 				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
 			builds.add(p);
-		}
+		}*/
 		
-		*/
         
-		//create builds for draw
+		//create all builds for draw
 		for(int i=0; i<c.size(); i++) {
 			Polygon p = new Polygon();
 			ArrayList<Integer> pind = c.get(i);
@@ -254,6 +253,7 @@ public class MapGenData {
 				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
 			builds.add(p);
 		}
+		
 	}
 	
 	public void generateRoads() {
@@ -276,9 +276,9 @@ public class MapGenData {
 	    ArrayList<Point2D> D2 = new ArrayList();
 	    ArrayList<Point2D> D3 = new ArrayList();
 	    ArrayList<Point2D> D = new ArrayList();
-	    ArrayList<Point2D> road = new ArrayList();
-	    ArrayList<Point2D> wpRoad = new ArrayList();
-	    ArrayList<Point2D> smRoad = new ArrayList();
+	    ArrayList<Point2D> road;
+	    ArrayList<Point2D> wpRoad;
+	    ArrayList<Point2D> smRoad;
 	    
 	    FileWriter csvroad = null;
 	    
@@ -329,7 +329,7 @@ public class MapGenData {
 			    	
 			    numD = D1.size();
 
-			    road.clear();
+			    road = new ArrayList();
 			    road.addAll(D.subList(0, numD));
 			    for(int i = 2*numD-1; i >= numD; i--)
 			    	road.add(D.get(i));
@@ -337,12 +337,12 @@ public class MapGenData {
 			    
 			    roads.add(road);
 
-			    wpRoad.clear();;
+			    wpRoad = new ArrayList();
 			    wpRoad.addAll(D.subList(2*numD, D.size()));
 			    
 			    wpRoads.add(wpRoad);
 			    
-			    smRoad.clear();
+			    smRoad = new ArrayList();
 			    for(int i = 0; i < numD; i++)
 			    	smRoad.add(new Point2D((road.get(i).getX() + wpRoad.get(i).getX())/2 + 1,
 			    			(road.get(i).getY() + wpRoad.get(i).getY())/2 + 1));
@@ -611,7 +611,7 @@ public class MapGenData {
 		return res;
 	}
 	
-	public static final int initialSize = 65535;
+	public static final int initialSize = 65535*65535;
 	
 	//if (x,y) is inside of polygon
 	public boolean inpolygon(double x, double y, ArrayList<Point2D> polygon) {
@@ -663,6 +663,8 @@ public class MapGenData {
             }
         
         System.out.println("sites="+done.size());
+        System.out.println("facets="+facets.size());
+        System.out.println("totalpoints="+total.size());
 	}
 	
 	private int index(Pnt pnt, ArrayList<Pnt> pnts) {
