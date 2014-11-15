@@ -142,7 +142,8 @@ public class MapGenData {
 		//vb.setTolerance(0);	//no snapping
 		vb.setSites(toCoords(voro_Points));
 		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
-		
+
+		/*
 		c.clear();
 		
         v = getVC(faces);
@@ -259,6 +260,7 @@ public class MapGenData {
 		        heights.add(height);
 		}
 		
+		*/
 		createBuild();
 
 	}
@@ -714,7 +716,7 @@ public class MapGenData {
 		for(int i=0; i<numPolygons; i++)
 			total += polygons.getGeometryN(i).getNumPoints();
 		
-		ArrayList<Point2D> totalp = new ArrayList();
+		ArrayList<Point2D> totalp = new ArrayList<>();
 		
 		for(int i=0; i<numPolygons; i++) {
 			ArrayList<Integer> facet = new ArrayList();
