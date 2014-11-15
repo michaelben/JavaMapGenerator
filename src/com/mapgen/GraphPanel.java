@@ -11,6 +11,8 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Path2D;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
@@ -18,6 +20,7 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 
 import com.mapgen.map.MapGenData;
+import com.marcrh.graph.Point;
 
 @SuppressWarnings("serial")
 public class GraphPanel extends JPanel implements Scrollable {
@@ -175,6 +178,17 @@ public class GraphPanel extends JPanel implements Scrollable {
         g.drawString(n.lbl, x - (w - 10) / 2, (y - (h - 4) / 2) + fm.getAscent());
     }
 
+	private void drawPoligon(Graphics2D g,List<Point> p){
+		if(p.size()<2)return;
+		Path2D path = new Path2D.Float();
+		path.moveTo(p.get(0).x, p.get(0).y);
+		for(int i=1;i<p.size();i++){
+			path.lineTo(p.get(i).x, p.get(i).y);
+		}
+		path.lineTo(p.get(0).x, p.get(0).y);
+		g.draw(path);
+	}
+	
     @Override
     //public synchronized void update(Graphics g) {
     public void paintComponent(Graphics g) {
@@ -187,8 +201,20 @@ public class GraphPanel extends JPanel implements Scrollable {
         g.fillRect(0, 0, d.width, d.height);
         
         g.setColor(edgeColor);
+        
+        g2.translate(Param.params[0].value/2, Param.params[1].value/2);
+		g2.scale(1, -1);
+		
+		/*
         for(Polygon p: MapGenData.builds)
         	g.drawPolygon(p);
+*/
+        
+        if(MapGenData.voro_Points != null)
+		for(int i=0;i<MapGenData.voro_Points.size();i++){
+			List<Point> p = MapGenData.voronoi.getRegion(i).getPoints();
+			drawPoligon(g2, p);
+		}
         
         /*
         Dimension d = getSize();

@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 import math.geom2d.Point2D;
@@ -21,6 +22,10 @@ import org.ejml.ops.CommonOps;
 import org.ejml.simple.SimpleMatrix;
 
 import com.mapgen.Param;
+import com.marcrh.graph.Point;
+import com.marcrh.graph.Range;
+import com.marcrh.graph.Utils;
+import com.marcrh.graph.delaunay.Voronoi;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -49,13 +54,15 @@ public class MapGenData {
 	
 	private DenseMatrix64F B1;
 	private DenseMatrix64F B;
-	private float[][] voro_Points;
+	public static ArrayList<Point> voro_Points;
 	public DenseMatrix64F v;
 	public ArrayList<ArrayList<Integer>> c = new ArrayList();
 	public ArrayList<Integer> ind;
 	public ArrayList<Double> heights;
 
 	public static ArrayList<Polygon> builds = new ArrayList();
+	
+	public static Voronoi voronoi;
 	
 	public MapGenData() {
 		xMargin = Param.params[0].value;
@@ -95,20 +102,16 @@ public class MapGenData {
 		System.out.println("B="+B.getNumRows());
 		System.out.println("tempD="+tempD.getNumRows());
 		System.out.println("wpRoad1="+wpRoad1.getNumRows());
+
+		voro_Points = new ArrayList();
+		for(int i=0; i<B.getNumRows(); i++)
+			voro_Points.add(new Point(B.get(i, 0), B.get(i, 1)));
+
+		for(int i=0; i<tempD.getNumRows(); i++)
+			voro_Points.add(new Point(tempD.get(i, 0), tempD.get(i, 1)));
 		
-		voro_Points = new float[B.getNumRows()+tempD.getNumRows()+wpRoad1.getNumRows()][2];
-		for(int i=0; i<B.getNumRows(); i++) {
-			voro_Points[i][0] = (float)B.get(i, 0);
-			voro_Points[i][1] = (float)B.get(i, 1);
-		}
-		for(int i=0; i<tempD.getNumRows(); i++) {
-			voro_Points[i+B.getNumRows()][0] = (float)tempD.get(i, 0);
-			voro_Points[i+B.getNumRows()][1] = (float)tempD.get(i, 1);
-		}
-		for(int i=0; i<wpRoad1.getNumRows(); i++) {
-			voro_Points[i+B.getNumRows()+tempD.getNumRows()][0] = (float)wpRoad1.get(i, 0);
-			voro_Points[i+B.getNumRows()+tempD.getNumRows()][1] = (float)wpRoad1.get(i, 1);
-		}
+		for(int i=0; i<wpRoad1.getNumRows(); i++)
+			voro_Points.add(new Point(wpRoad1.get(i, 0), wpRoad1.get(i, 1)));
 
 		ArrayList<Point2D> pts = new ArrayList();
 		for(ArrayList<Point2D> ps : roads) {
@@ -130,26 +133,51 @@ public class MapGenData {
 		
 		System.out.println("num of distinct points in wpRoads="+pts.size());
 		
+		/*
 		pts = new ArrayList();
-		for(float[] p : voro_Points) {
+		for(Point p : voro_Points) {
 			if(exist(pts, p) >= 0) continue;
 			else pts.add(new Point2D(p[0], p[1]));
 		}
 		
 		System.out.println("num of distinct points="+pts.size());
+		*/
 		
-		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
-		//vb.setTolerance(0);	//no snapping
-		vb.setSites(toCoords(voro_Points));
-		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
-		
+		voronoi = new Voronoi();	
+		int top = -Param.params[0].value/2;
+		int left = -Param.params[1].value/2;
+        Range r = new Range(new Point(top,left),new Point(-top, -left));
+        //points = Utils.generateRandomPoints(nPoints.getValue(), r);
+        
+        for(Point p:voro_Points) {
+        	System.out.println(p.x+", "+p.y);
+        }
+        
+        ArrayList<Point> invalid = new ArrayList();
+        for(Point p:voro_Points) {
+        	if(p.x <= 0 || p.x >= Param.params[0].value || p.y <= 0 || p.y >= Param.params[1].value)
+        		invalid.add(p);
+        	p.x += top;
+        	p.y += left;
+        }
+        
+        System.out.println("before remove points outside of draw panel: voro_Points="+voro_Points.size());
+        voro_Points.removeAll(invalid);
+        
+        System.out.println("before remove points too close: voro_Points="+voro_Points.size());
+        removeTooClose(voro_Points);
+        
+        System.out.println("voro_Points="+voro_Points.size());
+        
+        voronoi.generate(voro_Points, r);
+        /*
 		c.clear();
 		
-        v = getVC(faces);
+        v = getVC(voronoi);
 		
         //System.out.println("voro_Points="+voro_Points);
-        System.out.println("faces="+faces.getNumGeometries());
-        System.out.println("voro_Points="+voro_Points.length);
+        //System.out.println("faces="+voronoi.);
+        System.out.println("voro_Points="+voro_Points.size());
 		System.out.println("total="+v.getNumRows());
 		System.out.println("c="+c.size());
 		
@@ -259,8 +287,8 @@ public class MapGenData {
 		        heights.add(height);
 		}
 		
-		createBuild();
-
+		//createBuild();
+*/
 	}
 	
 	private void createBuild() {
@@ -275,8 +303,8 @@ public class MapGenData {
 		}
 	    
 		//create builds for draw
-		//for(int i=0; i<ind.size(); i++) {
-	    for(int i=0; i<c.size(); i++) {
+		for(int i=0; i<ind.size(); i++) {
+	    //for(int i=0; i<c.size(); i++) {
 			try {
 				csvfacets.write(String.format("%d\n", i));
 			} catch (IOException e1) {
@@ -284,9 +312,9 @@ public class MapGenData {
 				e1.printStackTrace();
 			}
 			Polygon p = new Polygon();
-			ArrayList<Integer> pind = c.get(i);
+			ArrayList<Integer> pind = c.get(ind.get(i));
 			for(int j=0; j<pind.size(); j++) {
-				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
+				p.addPoint((int)v.get(pind.get(j), 0), (int)v.get(pind.get(j), 1));
 				try {
 					csvfacets.write(String.format("%f,%f\n", v.get(j, 0), v.get(j, 1)));
 				} catch (IOException e) {
@@ -309,6 +337,8 @@ public class MapGenData {
 	
 	public void generateRoads() {
 		roads = new ArrayList();
+		wpRoads = new ArrayList();
+		smRoads = new ArrayList();
 		boolean equalSize = false;
 
 		if (xMargin == yMargin)
@@ -707,24 +737,18 @@ public class MapGenData {
 		return coords;
 	}
 	
-	public DenseMatrix64F getVC(GeometryCollection polygons) {
-		int numPolygons = polygons.getNumGeometries();
-		int total = 0;
-		
-		for(int i=0; i<numPolygons; i++)
-			total += polygons.getGeometryN(i).getNumPoints();
-		
+	public DenseMatrix64F getVC(Voronoi voronoi) {		
 		ArrayList<Point2D> totalp = new ArrayList();
 		
-		for(int i=0; i<numPolygons; i++) {
+		for(int i=0; i<voro_Points.size(); i++) {
 			ArrayList<Integer> facet = new ArrayList();
-			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
-			for(int j=0; j<regionCoordinates.length; j++) {
-				int index = exist(totalp, regionCoordinates[j]);
+			List<Point> p = voronoi.getRegion(i).getPoints();
+			for(int j=0; j<p.size(); j++) {
+				int index = exist(totalp, p.get(j));
 				if(index != -1) {
 					facet.add(index);
 				} else {
-					totalp.add(new Point2D(regionCoordinates[j].x, regionCoordinates[j].y));
+					totalp.add(new Point2D(p.get(j).x, p.get(j).y));
 					facet.add(totalp.size()-1);
 				}
 			}
@@ -733,6 +757,49 @@ public class MapGenData {
 		}
 		
 		return toMatrix(totalp);
+	}
+	
+	public static final double TOLERANCE = 1.0;
+	
+	private void removeTooClose(ArrayList<Point> pts) {
+		ArrayList<Point> tooclose = new ArrayList<Point>();
+		
+		for(int i=0; i<pts.size(); i++)
+			for(int j=i+1; j<pts.size(); j++)
+				if(pts.get(i).getDistanceTo(pts.get(j)) <= TOLERANCE) {
+					tooclose.add(pts.get(i));
+					break;
+				}
+				
+		pts.removeAll(tooclose);
+	}
+	
+	private int existp(ArrayList<Point> dup, Point p) {
+		for(int i=0; i<dup.size(); i++) {
+			double x = p.getX();
+			double y = p.getY();
+			if((x == dup.get(i).getX()) && (y == dup.get(i).getY())) {
+				//System.out.println("x="+x+", y="+y);
+					return i;
+			}
+			else continue;
+		}
+		
+		return -1;
+	}
+	
+	private int exist(ArrayList<Point2D> dup, Point p) {
+		for(int i=0; i<dup.size(); i++) {
+			double x = p.getX();
+			double y = p.getY();
+			if((x == dup.get(i).getX()) && (y == dup.get(i).getY())) {
+				//System.out.println("x="+x+", y="+y);
+					return i;
+			}
+			else continue;
+		}
+		
+		return -1;
 	}
 	
 	private int exist(ArrayList<Point2D> pts, Point2D coord) {
