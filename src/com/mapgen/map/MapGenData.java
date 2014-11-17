@@ -32,7 +32,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
 
 //TODO: this entire class is directly converted from matlab code.
-// better to use basic data structure and clean up all intermediate data structures and variable/method names
+// better to use basic data structure and clean up all intermediate data structures and variable/method names.
+// maybe remove dependency on EJML-core, EJML-equation and javaGeom libraries and rely on JTS only.
 public class MapGenData {
 	public boolean isUrban = true;	//urban map or suburban map
 	
