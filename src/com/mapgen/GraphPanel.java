@@ -12,14 +12,11 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
-
-import org.ejml.data.DenseMatrix64F;
 
 import com.mapgen.map.MapGenData;
 
@@ -35,8 +32,6 @@ public class GraphPanel extends JPanel implements Scrollable {
     public static Node nodes[] = new Node[100];
     int nedges;
     Edge edges[] = new Edge[200];
-    Thread relaxer;
-    boolean stress;
     boolean random;
     int numMouseButtonsDown = 0;
     
@@ -257,16 +252,6 @@ public class GraphPanel extends JPanel implements Scrollable {
                 this.addEdge(str.substring(0, i), str.substring(i + 1), len);
             }
         }
-        
-        /*
-        Dimension d = new Dimension(MapGen.MAP_WIDTH, MapGen.WINDOW_HEIGTH);
-        String center = null;
-        if (center != null) {
-            Node n = this.nodes[this.findNode(center)];
-            n.x = d.width / 2;
-            n.y = d.height / 2;
-            n.fixed = true;
-        }*/
         
     }
     
