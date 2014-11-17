@@ -2,12 +2,16 @@ package com.mapgen.map;
 
 import java.awt.Polygon;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Random;
 
 import math.geom2d.Point2D;
@@ -20,21 +24,27 @@ import org.ejml.data.DenseMatrix64F;
 import org.ejml.ops.CommonOps;
 import org.ejml.simple.SimpleMatrix;
 
+import com.mapgen.GraphPanel;
+import com.mapgen.Node;
 import com.mapgen.Param;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
 
+//TODO: this entire class is converted from matlab code.
+// better to use basic data structure and clean up all intermediate data structures and variable/method names
 public class MapGenData {
+	public boolean isUrban = true;
+	
 	int numRoads;
 	SimpleMatrix roadCentre;
 
 	ArrayList<ArrayList<Point2D>> roads = new ArrayList<ArrayList<Point2D>>();
 	ArrayList<ArrayList<Point2D>> wpRoads = new ArrayList<ArrayList<Point2D>>();
 	ArrayList<ArrayList<Point2D>> smRoads = new ArrayList<ArrayList<Point2D>>();
-	DenseMatrix64F tempD;
-	DenseMatrix64F wpRoad1;
+	ArrayList<Point2D> tempD;
+	ArrayList<Point2D> wpRoad1;
 	//DenseMatrix64F D;
 	int numD;
 	double maxHeight;
@@ -49,13 +59,14 @@ public class MapGenData {
 	
 	private DenseMatrix64F B1;
 	private DenseMatrix64F B;
-	private float[][] voro_Points;
-	public DenseMatrix64F v;
-	public ArrayList<ArrayList<Integer>> c = new ArrayList();
-	public ArrayList<Integer> ind;
+	private ArrayList<Point2D> voro_Points;
+	public static DenseMatrix64F v;
+	public static ArrayList<ArrayList<Integer>> c = new ArrayList<>();
+	public static HashSet<Integer> ind;
 	public ArrayList<Double> heights;
 
-	public static ArrayList<Polygon> builds = new ArrayList();
+	public static ArrayList<Polygon> builds = new ArrayList<>();
+	public static ArrayList<Polygon> builds2 = new ArrayList<>();
 	
 	public MapGenData() {
 		xMargin = Param.params[0].value;
@@ -83,9 +94,22 @@ public class MapGenData {
 				B1.set(i, 1, B1.get(i, 1) * yMargin);
 			}
 		}
+
+		tempD = new ArrayList<>();
+		for(ArrayList<Point2D> ps : roads) {
+			for(Point2D p: ps) {
+				if(exist(tempD, p) >= 0) continue;
+				else tempD.add(p);
+			}
+		}
 		
-		tempD = cell2mat(roads);
-		wpRoad1 = cell2mat(wpRoads);
+		wpRoad1 = new ArrayList<>();
+		for(ArrayList<Point2D> ps : wpRoads) {
+			for(Point2D p: ps) {
+				if(exist(wpRoad1, p) >= 0) continue;
+				else wpRoad1.add(p);
+			}
+		}
 		
 		//checking if the randomly picked points fall into the roads 
 		//in order to find and render only buildings that do not fall into roads
@@ -93,73 +117,72 @@ public class MapGenData {
 		
 		System.out.println("B1="+B1.getNumRows());
 		System.out.println("B="+B.getNumRows());
-		System.out.println("tempD="+tempD.getNumRows());
-		System.out.println("wpRoad1="+wpRoad1.getNumRows());
+		System.out.println("tempD="+tempD.size());
+		System.out.println("wpRoad1="+wpRoad1.size());
 		
-		voro_Points = new float[B.getNumRows()+tempD.getNumRows()+wpRoad1.getNumRows()][2];
-		for(int i=0; i<B.getNumRows(); i++) {
-			voro_Points[i][0] = (float)B.get(i, 0);
-			voro_Points[i][1] = (float)B.get(i, 1);
-		}
-		for(int i=0; i<tempD.getNumRows(); i++) {
-			voro_Points[i+B.getNumRows()][0] = (float)tempD.get(i, 0);
-			voro_Points[i+B.getNumRows()][1] = (float)tempD.get(i, 1);
-		}
-		for(int i=0; i<wpRoad1.getNumRows(); i++) {
-			voro_Points[i+B.getNumRows()+tempD.getNumRows()][0] = (float)wpRoad1.get(i, 0);
-			voro_Points[i+B.getNumRows()+tempD.getNumRows()][1] = (float)wpRoad1.get(i, 1);
-		}
+		voro_Points = new ArrayList<>();
+		for(int i=0; i<B.getNumRows(); i++)
+			voro_Points.add(new Point2D(B.get(i, 0), B.get(i, 1)));
 
-		ArrayList<Point2D> pts = new ArrayList();
-		for(ArrayList<Point2D> ps : roads) {
-			for(Point2D p: ps) {
-				if(exist(pts, p) >= 0) continue;
-				else pts.add(p);
-			}
-		}
+		for(int i=0; i<tempD.size(); i++)
+			voro_Points.add(tempD.get(i));
 		
-		System.out.println("num of distinct points in roads="+pts.size());
+		for(int i=0; i<wpRoad1.size(); i++)
+			voro_Points.add(wpRoad1.get(i));
 		
-		pts = new ArrayList();
-		for(ArrayList<Point2D> ps : wpRoads) {
-			for(Point2D p: ps) {
-				if(exist(pts, p) >= 0) continue;
-				else pts.add(p);
-			}
-		}
-		
-		System.out.println("num of distinct points in wpRoads="+pts.size());
-		
-		pts = new ArrayList();
-		for(float[] p : voro_Points) {
-			if(exist(pts, p) >= 0) continue;
-			else pts.add(new Point2D(p[0], p[1]));
-		}
-		
-		System.out.println("num of distinct points="+pts.size());
+        ArrayList<Point2D> invalid = new ArrayList<>();
+        for(Point2D p:voro_Points) {
+        	if(p.getX() <= 0 || p.getX() >= Param.params[0].value || p.getY() <= 0 || p.getY() >= Param.params[1].value)
+        		invalid.add(p);
+        }
+        
+        //voro_Points.removeAll(invalid);
+		//removeTooClose(voro_Points);
 		
 		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
 		//vb.setTolerance(0);	//no snapping
 		vb.setSites(toCoords(voro_Points));
 		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
 
-		/*
 		c.clear();
 		
         v = getVC(faces);
+        
+        //System.out.println("vertices="+v);
+        System.out.println("c="+c);
+        
+        //the order of faces returned from vonoroi routine is not the same as the order of input points
+        //we need to make them same
+        
+        ArrayList<ArrayList<Integer>> sameOrder = new ArrayList<>();
+        for(Point2D p : voro_Points) {
+	        for(ArrayList<Integer> face: c) {
+	        	if(inpolygon(p, face, v)) {
+	        		sameOrder.add(face);
+	        		break;
+	        	}
+	        }
+        }
 		
+        c = sameOrder;
+        
+        System.out.println("c="+c);
+        
         //System.out.println("voro_Points="+voro_Points);
         System.out.println("faces="+faces.getNumGeometries());
-        System.out.println("voro_Points="+voro_Points.length);
+        System.out.println("voro_Points="+voro_Points.size());
 		System.out.println("total="+v.getNumRows());
 		System.out.println("c="+c.size());
 		
-		int N = B.getNumRows();
-
-		ArrayList<Integer> ind1 = new ArrayList();
-		ArrayList<Integer> ind2 = new ArrayList();
-		ArrayList<Integer> ind3 = new ArrayList();
-		ind = new ArrayList();
+		int N;
+		if(isUrban)
+			N = B.getNumRows();
+		else
+			N = c.size();
+		
+		HashSet<Integer> ind1 = new HashSet<>();
+		HashSet<Integer> ind2 = new HashSet<>();
+		ind = new HashSet<>();
 		
 		//close open polygons and discard everything that may be outside the map area
 		for (int i = 0; i<N; i++) {
@@ -168,7 +191,13 @@ public class MapGenData {
 		        c.get(i).add(temp.get(0));  // closing polygons
 		}
 		
-		for(int i = 0; i < B.getNumRows()+tempD.getNumRows(); i++) {
+		int numPoints;
+		if(isUrban)
+			numPoints = B.getNumRows()+tempD.size();
+		else
+			numPoints = N;
+		
+		for(int i = 0; i < numPoints; i++) {
 			if(i>=c.size()) break;
 			
 			ArrayList<Integer> facet = c.get(i);
@@ -184,6 +213,8 @@ public class MapGenData {
 		    if(j == facet.size()) ind.add(i);
 		}
 		
+		System.out.println("ind size="+ind.size());
+		
 		for(int i = 0; i < N; i++) {    
 			    // checking if one or more sides of buildings intersect roads
 			    for(int k = 0; k < roads.size(); k++) {
@@ -195,9 +226,11 @@ public class MapGenData {
 			    }
 		}
 
+		System.out.println("ind1 size="+ind1.size());
+		
 		// we check if the buildings located close to the main road (Road) fall into the 
 		// smaller road (smRoad)
-		for(int i = B.getNumRows(); i < B.getNumRows()+tempD.getNumRows(); i++) {
+		for(int i = B.getNumRows(); i < B.getNumRows()+tempD.size(); i++) {
 			if(i>=c.size()) break;
 			
 		    if(c.get(i).size() != 0) {
@@ -213,21 +246,26 @@ public class MapGenData {
 		    }	
 		}
 		          
-		ind1.addAll(ind1.size(), ind2);
+		System.out.println("ind2 size="+ind2.size());
+		
+		ind1.addAll(ind2);
 		
 		ind.removeAll(ind1);
+		
+		System.out.println("ind size="+ind.size());
 		
 		// now all valid buildings are c.get(ind.get(i)) which are a set of indices into v
 		
 		//calculate the area of each building
-		ArrayList<Double> buildArea = new ArrayList();
-		for(int i = 0; i < ind.size(); i++) {
-			ArrayList<Integer> polyindex = c.get(ind.get(i));
+		ArrayList<Double> buildArea = new ArrayList<>();
+		ArrayList<Integer> indlist = new ArrayList<>(ind);
+		for(int i = 0; i < indlist.size(); i++) {
+			ArrayList<Integer> polyindex = c.get(indlist.get(i));
 			SimplePolygon2D poly = new SimplePolygon2D();
 			for(int j : polyindex)
 				poly.addVertex(new Point2D(v.get(j, 0), v.get(j, 1)));
 			
-			buildArea.add(poly.area());
+			buildArea.add(Math.abs(poly.area()));
 		}
 		
 		// we find the buildings with area greater than a percentage of 
@@ -238,15 +276,23 @@ public class MapGenData {
 		double areaMin = Collections.min(buildArea);
 		double percent1 = 0.6;
 		double percent2 = 3;
-		for(int i = 0; i < ind.size(); i++) {
+		ArrayList<Integer> rem = new ArrayList<>();
+		for(int i = 0; i < indlist.size(); i++) {
 			if((buildArea.get(i) > percent1*areaMax)
-				&& (buildArea.get(i) < percent2*areaMin))
-				ind.remove(i);
+				|| (buildArea.get(i) < percent2*areaMin))
+				rem.add(indlist.get(i));
 		}
+		
+		System.out.println("#removed="+rem.size());
+		System.out.println("buildArea="+buildArea);
+		System.out.println("#buildArea="+buildArea.size());
+		
+		ind.removeAll(rem);
+		System.out.println("ind size after area="+ind.size());
 		
 		//we create a database of variable heights 
 		//and we assign a height to each building
-		heights = new ArrayList();
+		heights = new ArrayList<>();
 		Random rand = new Random();
 		for(int i = 0; i < ind.size(); i++) {
 		        // random height calculation using a normal Gaussian distribution with 
@@ -260,13 +306,32 @@ public class MapGenData {
 		        heights.add(height);
 		}
 		
-		*/
 		createBuild();
+		//createBuild2(faces);
 
 	}
 	
-	private void createBuild() {
+	private void createBuild2(GeometryCollection polygons) {
+		builds2.clear();
+		
+		int numPolygons = polygons.getNumGeometries();
 
+		for(int i=0; i<numPolygons; i++) {
+			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
+			Polygon poly = new Polygon();
+			for(int j=0; j<regionCoordinates.length; j++)
+				poly.addPoint((int)regionCoordinates[j].x, (int)regionCoordinates[j].y);
+
+			builds2.add(poly);
+		}
+
+		System.out.println("builds total#="+builds2.size());
+	}
+	
+	private void createBuild() {
+		builds.clear();
+
+		/*
 		FileWriter csvfacets = null;
 	    
 	    try {
@@ -275,42 +340,68 @@ public class MapGenData {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	    */
+	    ArrayList<Integer> indlist = new ArrayList<>(ind);
 	    
 		//create builds for draw
 		//for(int i=0; i<ind.size(); i++) {
-	    for(int i=0; i<c.size(); i++) {
+	    for(int i=0; i<indlist.size(); i++) {
+	    	/*
 			try {
 				csvfacets.write(String.format("%d\n", i));
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
-			}
+			}*/
+	    	
 			Polygon p = new Polygon();
-			ArrayList<Integer> pind = c.get(i);
+			ArrayList<Integer> pind = c.get(indlist.get(i));
 			for(int j=0; j<pind.size(); j++) {
-				p.addPoint((int)v.get(j, 0), (int)v.get(j, 1));
+				p.addPoint((int)v.get(pind.get(j), 0), (int)v.get(pind.get(j), 1));
+				/*
 				try {
-					csvfacets.write(String.format("%f,%f\n", v.get(j, 0), v.get(j, 1)));
+					csvfacets.write(String.format("%f,%f\n", v.get(pind.get(j), 0), v.get(pind.get(j), 1)));
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
+				}*/
 			}
 			builds.add(p);
 		}
-		
+	    
+	    GraphPanel.nnodes = v.getNumRows();
+	    GraphPanel.nodes = new Node[v.getNumRows()];
+	    for(int i=0; i<v.getNumRows();i++)
+	        GraphPanel.nodes[i] = new Node(v.get(i, 0), v.get(i, 1));
+	    
+	    /*
 		try {
 			csvfacets.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 		
 		System.out.println("builds#="+builds.size());
 	}
 	
+	public static final double TOLERANCE = 1.0;
+	
+	private void removeTooClose(ArrayList<Point2D> pts) {
+		ArrayList<Point2D> tooclose = new ArrayList<Point2D>();
+		
+		for(int i=0; i<pts.size(); i++)
+			for(int j=i+1; j<pts.size(); j++)
+				if(Point2D.distance(pts.get(i), pts.get(j)) <= TOLERANCE) {
+					tooclose.add(pts.get(i));
+					break;
+				}
+				
+		pts.removeAll(tooclose);
+	}
+	
 	public void generateRoads() {
-		roads = new ArrayList();
+		roads = new ArrayList<>();
 		boolean equalSize = false;
 
 		if (xMargin == yMargin)
@@ -325,14 +416,15 @@ public class MapGenData {
 		
 		Random rand = new Random();
 
-	    ArrayList<Point2D> D1 = new ArrayList();
-	    ArrayList<Point2D> D2 = new ArrayList();
-	    ArrayList<Point2D> D3 = new ArrayList();
-	    ArrayList<Point2D> D = new ArrayList();
+	    ArrayList<Point2D> D1 = new ArrayList<>();
+	    ArrayList<Point2D> D2 = new ArrayList<>();
+	    ArrayList<Point2D> D3 = new ArrayList<>();
+	    ArrayList<Point2D> D = new ArrayList<>();
 	    ArrayList<Point2D> road;
 	    ArrayList<Point2D> wpRoad;
 	    ArrayList<Point2D> smRoad;
 	    
+	    /*
 	    FileWriter csvroad = null;
 	    
 	    try {
@@ -341,6 +433,7 @@ public class MapGenData {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	    */
 	    
 		for(int q = 0; q < numRoads; q++) {    
 			    D1.clear();
@@ -372,7 +465,7 @@ public class MapGenData {
 			    
 			    D = myRotateRoad(D, roadCentre.get(q));
 
-			    ArrayList<Point2D> pts = new ArrayList();
+			    ArrayList<Point2D> pts = new ArrayList<>();
 				for(Point2D p : D) {
 					if(exist(pts, p) >= 0) continue;
 					else pts.add(p);
@@ -380,6 +473,7 @@ public class MapGenData {
 				
 				System.out.println("num of distinct points in D="+pts.size());
 				
+				/*
 			    for(int i=0; i<D.size(); i++)
 					try {
 						csvroad.write(String.format("%f,%f\n", D.get(i).getX(), D.get(i).getY()));
@@ -387,7 +481,8 @@ public class MapGenData {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-			    	
+			    	*/
+				
 			    numD = D1.size();
 
 			    road = new ArrayList<Point2D>();
@@ -415,14 +510,16 @@ public class MapGenData {
 			    
 			    smRoads.add(smRoad);
 		}
-		
+
+		/*
 		try {
 			csvroad.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 		
+		/*
 		ArrayList<Point2D> pts = new ArrayList();
 		for(ArrayList<Point2D> ps : roads) {
 			for(Point2D p: ps) {
@@ -433,7 +530,7 @@ public class MapGenData {
 		
 		System.out.println("num of distinct points in roads="+pts.size());
 		
-		pts = new ArrayList();
+		pts = new ArrayList<>();
 		for(ArrayList<Point2D> ps : wpRoads) {
 			for(Point2D p: ps) {
 				if(exist(pts, p) >= 0) continue;
@@ -442,6 +539,7 @@ public class MapGenData {
 		}
 		
 		System.out.println("num of distinct points in wpRoads="+pts.size());
+		*/
 	}
 	
 	public ArrayList<Point2D> myRotateRoad(ArrayList<Point2D> D, double roadCenter) {
@@ -472,7 +570,7 @@ public class MapGenData {
 
 		double theta=(th*Math.PI)/180.0;
 		
-		ArrayList<Point2D> D1 = new ArrayList();
+		ArrayList<Point2D> D1 = new ArrayList<>();
 		
 		for(Point2D p: D) {
 			//p = p.rotate(center, theta);
@@ -522,7 +620,7 @@ public class MapGenData {
 	public static String facet_header = null;
 	
 	public void createDXFile(String fname, int choice) {
-		this.createDXFile(fname, choice, v, c, ind, heights, xMargin, yMargin);
+		this.createDXFile(fname, choice, v, c, new ArrayList<>(ind), heights, xMargin, yMargin);
 	}
 	
 	public void createDXFile(String fname, int choice,
@@ -593,11 +691,11 @@ public class MapGenData {
 			    	fw.write(String.format("%3s\n","2"));
 			    	fw.write(String.format("%s\n","CROSS"));
 			    	fw.write(String.format("%3s\n","10"));
-			    	fw.write(String.format("%.1f\n",k));
+			    	fw.write(String.format("%.1f\n",(float)k));
 			    	fw.write(String.format("%3s\n","20"));
-			    	fw.write(String.format("%.1f\n",l));
+			    	fw.write(String.format("%.1f\n",(float)l));
 			    	fw.write(String.format("%3s\n","30"));
-			    	fw.write(String.format("%.1f\n",0));
+			    	fw.write(String.format("%.1f\n",0.0));
 			    }
 		
 			fw.close();
@@ -609,14 +707,18 @@ public class MapGenData {
 	}
 	
 	public String readFile(String fn) {
-			StringBuilder sb = null;
-			char[] cbuf = new char[1024];
-			int i;
+			StringBuilder sb = new StringBuilder();
+			String buf;
 			
 			try {
-				FileReader in = new FileReader(fn);
-				while((i = in.read(cbuf)) != -1)
-					sb.append(cbuf, 0, i);
+				InputStream is=MapGenData.class.getClassLoader().getResourceAsStream(fn);
+				BufferedReader in = new BufferedReader(new InputStreamReader(is));
+				while((buf= in.readLine()) != null) {
+					sb.append(buf, 0, buf.length());
+					sb.append('\n');
+				}
+				
+				in.close();
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -638,7 +740,7 @@ public class MapGenData {
 			p1.addVertex(new Point2D(vertices.get(i, 0), vertices.get(i, 1)));
 		
 		for(int i=0; i<road.size(); i++)
-			p1.addVertex(new Point2D(road.get(i).getX(), road.get(i).getY()));
+			p2.addVertex(new Point2D(road.get(i).getX(), road.get(i).getY()));
 		
 		res = Polygons2D.intersection(p1, p2);
 		
@@ -668,7 +770,7 @@ public class MapGenData {
 	
 	//find all points fall inside of roads and discard them, return the rest points
 	public DenseMatrix64F find(DenseMatrix64F b1, ArrayList<ArrayList<Point2D>> roads) {
-		ArrayList<Point2D> pnts = new ArrayList();
+		ArrayList<Point2D> pnts = new ArrayList<>();
 		
 		for(int i = 0; i < b1.getNumRows(); i++) {
 			double x = b1.get(i,0);
@@ -696,30 +798,36 @@ public class MapGenData {
 	
 	//if (x,y) is inside of polygon
 	public boolean inpolygon(double x, double y, ArrayList<Point2D> polygon) {
-		SimplePolygon2D poly = new SimplePolygon2D(polygon);
+		Polygon poly = new Polygon();
+		for(Point2D p: polygon)
+			poly.addPoint((int)p.getX(), (int)p.getY());
 		
 		return poly.contains(x, y);
 	}
 	
-	public ArrayList<Coordinate> toCoords(float[][] pts) {
-		ArrayList<Coordinate> coords = new ArrayList();
-		for(int i=0; i<pts.length; i++)
-			coords.add(new Coordinate(pts[i][0], pts[i][1]));
+	public boolean inpolygon(Point2D p, ArrayList<Integer> polygon, DenseMatrix64F vertices) {
+		Polygon poly = new Polygon();
+		for(int i : polygon)
+			poly.addPoint((int)vertices.get(i, 0), (int)vertices.get(i, 1));
+    	
+		return poly.contains(p.getX(), p.getY());
+	}
+	
+	public ArrayList<Coordinate> toCoords(ArrayList<Point2D> pts) {
+		ArrayList<Coordinate> coords = new ArrayList<>();
+		for(int i=0; i<pts.size(); i++)
+			coords.add(new Coordinate(pts.get(i).getX(), pts.get(i).getY()));
 		
 		return coords;
 	}
 	
 	public DenseMatrix64F getVC(GeometryCollection polygons) {
 		int numPolygons = polygons.getNumGeometries();
-		int total = 0;
-		
-		for(int i=0; i<numPolygons; i++)
-			total += polygons.getGeometryN(i).getNumPoints();
 		
 		ArrayList<Point2D> totalp = new ArrayList<>();
 		
 		for(int i=0; i<numPolygons; i++) {
-			ArrayList<Integer> facet = new ArrayList();
+			ArrayList<Integer> facet = new ArrayList<>();
 			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
 			for(int j=0; j<regionCoordinates.length; j++) {
 				int index = exist(totalp, regionCoordinates[j]);
@@ -801,6 +909,7 @@ public class MapGenData {
 				} else
 					poly.addPoint((int)Float.parseFloat(result[0]), (int)Float.parseFloat(result[1]));
 			}
+			r.close();
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

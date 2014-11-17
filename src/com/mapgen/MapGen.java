@@ -143,9 +143,23 @@ public class MapGen {
 				
 				mapPanel.setMapSize();
 				
-				mapData.generateMap();
-				//mapData.readCsv("d:\\iso\\csv");
+				//in rare case where the generateMap failed due to failed voronoi routine call, repeat the process 5 times
+				int i=0;
+				while(i<5) {
+					try{
+						i++;
+						
+						//mapData.readCsv("d:\\iso\\csv");
+						mapData.generateMap();
+						break;
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
 				
+				if(i<5) mapPanel.repaint();
+				else JOptionPane.showMessageDialog(frame, "Error in map generation.");
 			}
 		});
 		

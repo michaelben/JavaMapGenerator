@@ -11,11 +11,15 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
+
+import org.ejml.data.DenseMatrix64F;
 
 import com.mapgen.map.MapGenData;
 
@@ -25,8 +29,8 @@ public class GraphPanel extends JPanel implements Scrollable {
 	
 	public static final double TOLERANCE = 20;
 	
-    int nnodes;
-    Node nodes[] = new Node[100];
+    public static int nnodes;
+    public static Node nodes[] = new Node[100];
     int nedges;
     Edge edges[] = new Edge[200];
     Thread relaxer;
@@ -53,7 +57,7 @@ public class GraphPanel extends JPanel implements Scrollable {
         //rh.put(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         //rh.put(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
     	
-    	init();
+    	//init();
     	
         addMouseListener(new MouseAdapter() {
 
@@ -186,10 +190,31 @@ public class GraphPanel extends JPanel implements Scrollable {
         g.setColor(getBackground());
         g.fillRect(0, 0, d.width, d.height);
         
-        g.setColor(edgeColor);
-        for(Polygon p: MapGenData.builds)
+        g.setColor(Color.red);
+        for(Polygon p: MapGenData.builds2)
         	g.drawPolygon(p);
         
+        ArrayList<ArrayList<Integer>> c = MapGenData.c;
+        DenseMatrix64F v = MapGenData.v;
+        HashSet<Integer> ind = MapGenData.ind;
+        ArrayList<Polygon> builds = MapGenData.builds;
+        
+        if(ind != null) {
+	        ArrayList<Integer> indlist = new ArrayList<>(ind);
+	        for(int i=0; i<indlist.size(); i++) {
+	        	Polygon p = new Polygon();
+				ArrayList<Integer> pind = c.get(indlist.get(i));
+				for(int j=0; j<pind.size(); j++) {
+					p.addPoint((int)nodes[pind.get(j)].x, (int)nodes[pind.get(j)].y);
+				}
+				builds.add(p);
+			}
+	        
+	        g.setColor(edgeColor);
+	        for(Polygon p: builds)
+	        	g.drawPolygon(p);
+        }
+
         /*
         Dimension d = getSize();
         if ((offscreen == null) || (d.width != offscreensize.width)
