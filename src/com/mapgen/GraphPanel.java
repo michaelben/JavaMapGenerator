@@ -186,13 +186,23 @@ public class GraphPanel extends JPanel implements Scrollable {
         g2.setRenderingHints(rh);
        
         Dimension d = getSize();
+        if ((offscreen == null) || (d.width != offscreensize.width)
+                || (d.height != offscreensize.height)) {
+            offscreen = createImage(d.width, d.height);
+            offscreensize = d;
+            if (offgraphics != null) {
+                offgraphics.dispose();
+            }
+            offgraphics = offscreen.getGraphics();
+            offgraphics.setFont(getFont());
+        }
+
+        offgraphics.setColor(getBackground());
+        offgraphics.fillRect(0, 0, d.width, d.height);
         
-        g.setColor(getBackground());
-        g.fillRect(0, 0, d.width, d.height);
-        
-        g.setColor(Color.red);
+        offgraphics.setColor(Color.red);
         for(Polygon p: MapGenData.builds2)
-        	g.drawPolygon(p);
+        	offgraphics.drawPolygon(p);
         
         ArrayList<ArrayList<Integer>> c = MapGenData.c;
         DenseMatrix64F v = MapGenData.v;
@@ -210,9 +220,9 @@ public class GraphPanel extends JPanel implements Scrollable {
 				builds.add(p);
 			}
 	        
-	        g.setColor(edgeColor);
+	        offgraphics.setColor(edgeColor);
 	        for(Polygon p: builds)
-	        	g.drawPolygon(p);
+	        	offgraphics.drawPolygon(p);
         }
 
         /*
@@ -256,7 +266,7 @@ public class GraphPanel extends JPanel implements Scrollable {
             paintNode(offgraphics, nodes[i], fm);
         }
         */
-        //g.drawImage(offscreen, 0, 0, null);
+        g.drawImage(offscreen, 0, 0, null);
     }
 
     public void init() {
