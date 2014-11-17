@@ -75,15 +75,19 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 	public void itemStateChanged(ItemEvent e) {
 		if (e.getStateChange() == ItemEvent.SELECTED) {
 			// Turn it to metric.
-			rowView.setIsMetric(true);
-			columnView.setIsMetric(true);
+			//rowView.setIsMetric(true);
+			//columnView.setIsMetric(true);
+			GraphPanel.isFill = true;
 		} else {
 			// Turn it to inches.
-			rowView.setIsMetric(false);
-			columnView.setIsMetric(false);
+			//rowView.setIsMetric(false);
+			//columnView.setIsMetric(false);
+			GraphPanel.isFill = false;
 		}
 		
 		graphPanel.setMaxUnitIncrement(rowView.getIncrement());
+		
+		graphPanel.repaint();
 	}
 
 	/** Returns an ImageIcon, or null if the path was invalid. */

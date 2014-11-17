@@ -127,8 +127,9 @@ public class Rule extends JComponent {
                 g.drawLine(0, SIZE-1, 0, SIZE-tickLength-1);
                 g.drawString(text, 2, 21);
             } else {
+            	text = Integer.toString(Param.params[1].value) + " m";
                 g.drawLine(SIZE-1, 0, SIZE-tickLength-1, 0);
-                g.drawString(text, 9, 10);
+                g.drawString(text, 2, 10);
             }
             text = null;
             start = increment;
@@ -142,7 +143,10 @@ public class Rule extends JComponent {
             if (i % units == 0)  {
                 tickLength = 10;
                 //text = Integer.toString(i/units);
-                text = Integer.toString(i);
+                if (orientation == HORIZONTAL)
+                	text = Integer.toString(i);
+                else
+                	text = Integer.toString(Param.params[1].value - i);
             } else {
                 tickLength = 5;
                 text = null;

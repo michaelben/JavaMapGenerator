@@ -25,6 +25,8 @@ import com.mapgen.map.MapGenData;
 
 @SuppressWarnings("serial")
 public class GraphPanel extends JPanel implements Scrollable {
+	public static boolean isFill = true;
+	
 	private int maxUnitIncrement = 1;
 	
 	public static final double TOLERANCE = 20;
@@ -160,6 +162,7 @@ public class GraphPanel extends JPanel implements Scrollable {
     final Color selectColor = Color.pink;
     //final Color edgeColor = Color.gray;
     final Color edgeColor = new Color(160, 160, 160);
+    final Color fillColor = new Color(200, 200, 200);
     final Color nodeColor = new Color(250, 220, 100);
     final Color stressColor = Color.black;
     final Color arcColor1 = Color.black;
@@ -197,6 +200,9 @@ public class GraphPanel extends JPanel implements Scrollable {
             offgraphics.setFont(getFont());
         }
 
+        //((Graphics2D)offgraphics).translate(0, d.height);
+        //((Graphics2D)offgraphics).scale(1, -1);
+		
         offgraphics.setColor(getBackground());
         offgraphics.fillRect(0, 0, d.width, d.height);
         
@@ -205,67 +211,31 @@ public class GraphPanel extends JPanel implements Scrollable {
         	offgraphics.drawPolygon(p);
         
         ArrayList<ArrayList<Integer>> c = MapGenData.c;
-        DenseMatrix64F v = MapGenData.v;
-        HashSet<Integer> ind = MapGenData.ind;
+        ArrayList<Integer> indlist = MapGenData.indlist;
         ArrayList<Polygon> builds = MapGenData.builds;
         
-        if(ind != null) {
-	        ArrayList<Integer> indlist = new ArrayList<>(ind);
+        if(indlist != null) {
+        	builds.clear();
 	        for(int i=0; i<indlist.size(); i++) {
-	        	Polygon p = new Polygon();
 				ArrayList<Integer> pind = c.get(indlist.get(i));
-				for(int j=0; j<pind.size(); j++) {
+				Polygon p = new Polygon();
+				for(int j=0; j<pind.size(); j++)
 					p.addPoint((int)nodes[pind.get(j)].x, (int)nodes[pind.get(j)].y);
-				}
+				
 				builds.add(p);
 			}
-	        
-	        offgraphics.setColor(edgeColor);
-	        for(Polygon p: builds)
-	        	offgraphics.drawPolygon(p);
+
+	        for(Polygon p: builds) {
+	        	if(isFill) {
+	        		offgraphics.setColor(fillColor);
+	        		offgraphics.fillPolygon(p);
+	        	}
+	        	
+        		offgraphics.setColor(edgeColor);
+        		offgraphics.drawPolygon(p);
+	        }
         }
 
-        /*
-        Dimension d = getSize();
-        if ((offscreen == null) || (d.width != offscreensize.width)
-                || (d.height != offscreensize.height)) {
-            offscreen = createImage(d.width, d.height);
-            offscreensize = d;
-            if (offgraphics != null) {
-                offgraphics.dispose();
-            }
-            offgraphics = offscreen.getGraphics();
-            offgraphics.setFont(getFont());
-        }
-
-        offgraphics.setColor(getBackground());
-        offgraphics.fillRect(0, 0, d.width, d.height);
-        for (int i = 0; i < nedges; i++) {
-            Edge e = edges[i];
-            int x1 = (int) nodes[e.from].x;
-            int y1 = (int) nodes[e.from].y;
-            int x2 = (int) nodes[e.to].x;
-            int y2 = (int) nodes[e.to].y;
-            int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2)
-                    + (y1 - y2) * (y1 - y2)) - e.len);
-            offgraphics.setColor(edgeColor);
-            offgraphics.drawLine(x1, y1, x2, y2);
-            if (stress) {
-                String lbl = String.valueOf(len);
-                offgraphics.setColor(stressColor);
-                offgraphics.drawString(lbl, x1 + (x2 - x1) / 2, y1 + (y2 - y1)
-                        / 2);
-                offgraphics.setColor(edgeColor);
-            }
-        }
-        */
-
-        /*
-        FontMetrics fm = offgraphics.getFontMetrics();
-        for (int i = 0; i < nnodes; i++) {
-            paintNode(offgraphics, nodes[i], fm);
-        }
-        */
         g.drawImage(offscreen, 0, 0, null);
     }
 

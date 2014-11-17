@@ -2,7 +2,6 @@ package com.mapgen.map;
 
 import java.awt.Polygon;
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -32,10 +31,10 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
 
-//TODO: this entire class is converted from matlab code.
+//TODO: this entire class is directly converted from matlab code.
 // better to use basic data structure and clean up all intermediate data structures and variable/method names
 public class MapGenData {
-	public boolean isUrban = true;
+	public boolean isUrban = true;	//urban map or suburban map
 	
 	int numRoads;
 	SimpleMatrix roadCentre;
@@ -45,7 +44,6 @@ public class MapGenData {
 	ArrayList<ArrayList<Point2D>> smRoads = new ArrayList<ArrayList<Point2D>>();
 	ArrayList<Point2D> tempD;
 	ArrayList<Point2D> wpRoad1;
-	//DenseMatrix64F D;
 	int numD;
 	double maxHeight;
 	
@@ -63,6 +61,7 @@ public class MapGenData {
 	public static DenseMatrix64F v;
 	public static ArrayList<ArrayList<Integer>> c = new ArrayList<>();
 	public static HashSet<Integer> ind;
+	public static ArrayList<Integer> indlist;
 	public ArrayList<Double> heights;
 
 	public static ArrayList<Polygon> builds = new ArrayList<>();
@@ -258,7 +257,7 @@ public class MapGenData {
 		
 		//calculate the area of each building
 		ArrayList<Double> buildArea = new ArrayList<>();
-		ArrayList<Integer> indlist = new ArrayList<>(ind);
+		indlist = new ArrayList<>(ind);
 		for(int i = 0; i < indlist.size(); i++) {
 			ArrayList<Integer> polyindex = c.get(indlist.get(i));
 			SimplePolygon2D poly = new SimplePolygon2D();
@@ -330,41 +329,13 @@ public class MapGenData {
 	
 	private void createBuild() {
 		builds.clear();
-
-		/*
-		FileWriter csvfacets = null;
-	    
-	    try {
-	    	csvfacets = new FileWriter("d:\\iso\\csvfacets");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	    */
-	    ArrayList<Integer> indlist = new ArrayList<>(ind);
 	    
 		//create builds for draw
-		//for(int i=0; i<ind.size(); i++) {
 	    for(int i=0; i<indlist.size(); i++) {
-	    	/*
-			try {
-				csvfacets.write(String.format("%d\n", i));
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}*/
-	    	
 			Polygon p = new Polygon();
 			ArrayList<Integer> pind = c.get(indlist.get(i));
 			for(int j=0; j<pind.size(); j++) {
 				p.addPoint((int)v.get(pind.get(j), 0), (int)v.get(pind.get(j), 1));
-				/*
-				try {
-					csvfacets.write(String.format("%f,%f\n", v.get(pind.get(j), 0), v.get(pind.get(j), 1)));
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}*/
 			}
 			builds.add(p);
 		}
@@ -373,14 +344,6 @@ public class MapGenData {
 	    GraphPanel.nodes = new Node[v.getNumRows()];
 	    for(int i=0; i<v.getNumRows();i++)
 	        GraphPanel.nodes[i] = new Node(v.get(i, 0), v.get(i, 1));
-	    
-	    /*
-		try {
-			csvfacets.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
 		
 		System.out.println("builds#="+builds.size());
 	}
@@ -511,35 +474,6 @@ public class MapGenData {
 			    smRoads.add(smRoad);
 		}
 
-		/*
-		try {
-			csvroad.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
-		
-		/*
-		ArrayList<Point2D> pts = new ArrayList();
-		for(ArrayList<Point2D> ps : roads) {
-			for(Point2D p: ps) {
-				if(exist(pts, p) >= 0) continue;
-				else pts.add(p);
-			}
-		}
-		
-		System.out.println("num of distinct points in roads="+pts.size());
-		
-		pts = new ArrayList<>();
-		for(ArrayList<Point2D> ps : wpRoads) {
-			for(Point2D p: ps) {
-				if(exist(pts, p) >= 0) continue;
-				else pts.add(p);
-			}
-		}
-		
-		System.out.println("num of distinct points in wpRoads="+pts.size());
-		*/
 	}
 	
 	public ArrayList<Point2D> myRotateRoad(ArrayList<Point2D> D, double roadCenter) {
