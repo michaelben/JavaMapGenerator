@@ -552,10 +552,98 @@ public class MapGenData {
 	public static String facet_header = null;
 	
 	public void createDXFile(String fname, int choice) {
-		this.createDXFile(fname, choice, v, c, new ArrayList<>(ind), heights, xMargin, yMargin);
+		if(GraphPanel.nodes != null)
+			this.createDXFile(fname, choice, GraphPanel.nodes, c, new ArrayList<>(ind), heights, xMargin, yMargin);
+		else
+			this.createDXFile(fname, choice, v, c, new ArrayList<>(ind), heights, xMargin, yMargin);
 	}
 	
-	public void createDXFile(String fname, int choice,
+	//create dxf from nodes data reflecting user adjusting
+	private void createDXFile(String fname, int choice,
+			Node[] nodes,
+			ArrayList<ArrayList<Integer>> builds,
+			ArrayList<Integer> ind,
+			ArrayList<Double> heights,
+			double xMargin,
+			double yMargin) {
+		
+		try {
+			FileWriter fw = new FileWriter(fname);
+			
+			if(DXF_header == null) DXF_header = readFile(DXF_header_fn);
+			if(facet_header == null) facet_header = readFile(facet_header_fn);
+			
+			fw.write(DXF_header);
+			fw.write("\n");
+			
+			for(int i = 0; i < ind.size(); i++) {
+			    ArrayList<Integer> build = builds.get(ind.get(i));
+			    
+			    fw.write(facet_header);
+				fw.write("\n");
+				
+				double height = heights.get(i);
+				
+				for(int j = 0; j < build.size(); j++) {
+					double x = nodes[build.get(j)].getX();
+					double y = nodes[build.get(j)].getY();
+			        if ( j != build.size()-1 ) {
+			        	fw.write(String.format("%s\n","BUILD1"));
+			        	fw.write(String.format("%3s\n","10"));
+			        	fw.write(String.format("%.1f\n",x));
+			        	fw.write(String.format("%3s\n","20"));
+			        	fw.write(String.format("%.1f\n",y));
+			        	fw.write(String.format("%3s\n","30"));
+			        	fw.write(String.format("%.1f\n",height));
+			        	fw.write(String.format("%3s\n","70"));
+			        	fw.write(String.format("%6s\n","32"));
+			        	fw.write(String.format("%3s\n","0"));
+			        	fw.write(String.format("%s\n","VERTEX"));
+			        	fw.write(String.format("%3s\n","8"));
+			        } else {
+			        	fw.write(String.format("%s\n","BUILD1"));
+			        	fw.write(String.format("%3s\n","10"));
+			        	fw.write(String.format("%.1f\n",x));
+			        	fw.write(String.format("%3s\n","20"));
+			        	fw.write(String.format("%.1f\n",y));
+			        	fw.write(String.format("%3s\n","30"));
+			        	fw.write(String.format("%.1f\n",height));
+			        	fw.write(String.format("%3s\n","70"));
+			        	fw.write(String.format("%6s\n","32"));
+			        	fw.write(String.format("%3s\n","0"));
+			        	fw.write(String.format("%s\n","SEQEND"));
+			        	fw.write(String.format("%3s\n","8"));
+			        	fw.write(String.format("%s\n","POLYLINE"));
+			        	fw.write(String.format("%3s\n","8"));
+			        }
+				}
+			}
+			
+			for(int k = 0; k <= xMargin; k = k + 10)
+			    for(int l = 0; l <= yMargin; l = l + 10) {
+			    	fw.write(String.format("%s\n","INSERT"));
+			    	fw.write(String.format("%3s\n","8"));
+			    	fw.write(String.format("%s\n","DEM_10M_CROSS"));
+			    	fw.write(String.format("%3s\n","2"));
+			    	fw.write(String.format("%s\n","CROSS"));
+			    	fw.write(String.format("%3s\n","10"));
+			    	fw.write(String.format("%.1f\n",(float)k));
+			    	fw.write(String.format("%3s\n","20"));
+			    	fw.write(String.format("%.1f\n",(float)l));
+			    	fw.write(String.format("%3s\n","30"));
+			    	fw.write(String.format("%.1f\n",0.0));
+			    }
+		
+			fw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	//create dxf from builds data
+	private void createDXFile(String fname, int choice,
 			DenseMatrix64F vertices,
 			ArrayList<ArrayList<Integer>> builds,
 			ArrayList<Integer> ind,

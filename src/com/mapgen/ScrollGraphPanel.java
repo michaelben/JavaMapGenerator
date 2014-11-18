@@ -32,7 +32,7 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 
 		// Create the corners.
 		JPanel buttonCorner = new JPanel(); // use FlowLayout
-		isMetric = new JToggleButton("tm", true);
+		isMetric = new JToggleButton("tm", false);
 		isMetric.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		isMetric.setMargin(new Insets(2, 2, 2, 2));
 		isMetric.addItemListener(this);

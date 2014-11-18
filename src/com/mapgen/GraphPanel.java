@@ -22,7 +22,7 @@ import com.mapgen.map.MapGenData;
 
 @SuppressWarnings("serial")
 public class GraphPanel extends JPanel implements Scrollable {
-	public static boolean isFill = true;
+	public static boolean isFill = false;
 	
 	private int maxUnitIncrement = 1;
 	
