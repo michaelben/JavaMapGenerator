@@ -32,10 +32,12 @@
 package com.mapgen;
 
 import java.awt.*;
+
 import javax.swing.*;
 
 /* Rule.java is used by ScrollDemo.java. */
 
+@SuppressWarnings("serial")
 public class Rule extends JComponent {
     public static final int INCH = Toolkit.getDefaultToolkit().
             getScreenResolution();

@@ -32,10 +32,12 @@
 package com.mapgen;
 
 import java.awt.*;
+
 import javax.swing.*;
 
 /* Corner.java is used by ScrollDemo.java. */
 
+@SuppressWarnings("serial")
 public class Corner extends JComponent {
     protected void paintComponent(Graphics g) {
         // Fill me with dirty brown/orange.

@@ -14,6 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
 
+@SuppressWarnings("serial")
 public class ScrollGraphPanel extends JPanel implements ItemListener {
 	private Rule columnView;
 	private Rule rowView;

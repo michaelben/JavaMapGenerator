@@ -69,6 +69,10 @@ public class MapGenData {
 	public static ArrayList<Polygon> builds2 = new ArrayList<>();		//all facets resulting from voronoi call
 	
 	public MapGenData() {
+		initParam();
+	}
+
+	private void initParam() {
 		xMargin = Param.params[0].value;
 		yMargin = Param.params[1].value; 
 		roadWidth = Param.params[2].value;
@@ -76,11 +80,21 @@ public class MapGenData {
 		heightMean = Param.params[4].value;
 		heightStd = Param.params[5].value; 
 		dist = Param.params[6].value;
+		
+		//reset collections
+		if(voro_Points != null) voro_Points.clear();
+		if(ind != null) ind.clear();
+		if(indlist != null) indlist.clear();
+		if(heights != null) heights.clear();
+		if(builds != null) builds.clear();
+		if(builds2 != null) builds2.clear();
 	}
-
+	
 	public void generateMap() {
-		int dense = (int)Math.floor((Param.params[0].value + Param.params[1].value)/8);
-		numRoads = (int) Math.floor((Param.params[0].value + Param.params[1].value)/200);
+		initParam();
+		
+		int dense = (int)Math.floor((xMargin + yMargin)/8);
+		numRoads = (int)Math.floor((xMargin + yMargin)/200);
 
 		//result into roads, wpRoads and smRoads
 		generateRoads();
@@ -137,7 +151,7 @@ public class MapGenData {
 		//discard all points falling out of the map area
         ArrayList<Point2D> invalid = new ArrayList<>();
         for(Point2D p:voro_Points) {
-        	if(p.getX() <= 0 || p.getX() >= Param.params[0].value || p.getY() <= 0 || p.getY() >= Param.params[1].value)
+        	if(p.getX() <= 0 || p.getX() >= xMargin || p.getY() <= 0 || p.getY() >= yMargin)
         		invalid.add(p);
         }
         
@@ -158,7 +172,7 @@ public class MapGenData {
         v = getVC(faces);
         
         //System.out.println("vertices="+v);
-        System.out.println("c="+c);
+        //System.out.println("c="+c);
         
         //for some vonoroi routine(matlab), the order of faces returned from vonoroi routine is the same as the order of input points.
         //but for JTS, the order of faces returned from vonoroi routine is not the same as the order of input points.
@@ -175,7 +189,7 @@ public class MapGenData {
 		
         c = sameOrder;
         
-        System.out.println("c="+c);
+        //System.out.println("c="+c);
         
         //System.out.println("voro_Points="+voro_Points);
         System.out.println("faces="+faces.getNumGeometries());
@@ -295,7 +309,7 @@ public class MapGenData {
 		}
 		
 		System.out.println("#removed="+rem.size());
-		System.out.println("buildArea="+buildArea);
+		//System.out.println("buildArea="+buildArea);
 		System.out.println("#buildArea="+buildArea.size());
 		
 		ind.removeAll(rem);
@@ -321,25 +335,7 @@ public class MapGenData {
 		//createBuild2(faces);
 
 	}
-	
-	//create all facets, including those invalid facets
-	private void createBuild2(GeometryCollection polygons) {
-		builds2.clear();
-		
-		int numPolygons = polygons.getNumGeometries();
 
-		for(int i=0; i<numPolygons; i++) {
-			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
-			Polygon poly = new Polygon();
-			for(int j=0; j<regionCoordinates.length; j++)
-				poly.addPoint((int)regionCoordinates[j].x, (int)regionCoordinates[j].y);
-
-			builds2.add(poly);
-		}
-
-		System.out.println("builds total#="+builds2.size());
-	}
-	
 	//create all valid facets only
 	private void createBuild() {
 		builds.clear();
@@ -361,9 +357,30 @@ public class MapGenData {
 		
 		System.out.println("builds#="+builds.size());
 	}
+
+	
+	//create all facets, including those invalid facets
+	@SuppressWarnings("unused")
+	private void createBuild2(GeometryCollection polygons) {
+		builds2.clear();
+		
+		int numPolygons = polygons.getNumGeometries();
+
+		for(int i=0; i<numPolygons; i++) {
+			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
+			Polygon poly = new Polygon();
+			for(int j=0; j<regionCoordinates.length; j++)
+				poly.addPoint((int)regionCoordinates[j].x, (int)regionCoordinates[j].y);
+
+			builds2.add(poly);
+		}
+
+		System.out.println("builds total#="+builds2.size());
+	}
 	
 	public static final double TOLERANCE = 1.0;
 	
+	@SuppressWarnings("unused")
 	private void removeTooClose(ArrayList<Point2D> pts) {
 		ArrayList<Point2D> tooclose = new ArrayList<Point2D>();
 		
@@ -379,6 +396,9 @@ public class MapGenData {
 	
 	public void generateRoads() {
 		roads = new ArrayList<>();
+		wpRoads = new ArrayList<>();
+		smRoads = new ArrayList<>();
+		
 		boolean equalSize = false;
 
 		if (xMargin == yMargin)
