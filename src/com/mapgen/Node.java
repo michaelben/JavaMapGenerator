@@ -7,18 +7,21 @@ public class Node {
     double dy;
     boolean fixed;
     String lbl;
-
-    Node() {
-        this(0, 0, null);
+    
+    public Node () {
+    	this(0,0);
     }
-
-    Node(double x, double y) {
-        this(x, y, null);
+    
+    public Node(double x, double y) {
+    	this.x = x;
+    	this.y = y;
     }
-
-    Node(double x, double y, String lbl) {
-        this.x = x;
-        this.y = y;
-        this.lbl = lbl;
+    
+    public double getX() {
+    	return x;
+    }
+    
+    public double getY() {
+    	return y;
     }
 }

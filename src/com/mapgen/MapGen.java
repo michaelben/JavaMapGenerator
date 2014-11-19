@@ -1,25 +1,40 @@
 package com.mapgen;
 
-import javax.swing.*;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.border.EtchedBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.border.TitledBorder;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+
+import javax.swing.BoxLayout;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.SwingConstants;
+import javax.swing.WindowConstants;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
+
+import com.mapgen.map.MapGenData;
 
 public class MapGen {
 
@@ -33,7 +48,7 @@ public class MapGen {
     public static Rectangle desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
     final JButton undoButton = new JButton("Undo");
     final JButton redoButton = new JButton("Redo");
-    final JToggleButton fillColorToggleButton = new JToggleButton("Fill Color");
+    static final JToggleButton fillColorToggleButton = new JToggleButton("Fill Color");
     //public static final int MAP_WIDTH = WINDOW_WIDTH - CONTROL_WIDTH;
     private final JPanel ctlPanel = new JPanel();
     private final ScrollGraphPanel mapPanel = new ScrollGraphPanel();
@@ -47,7 +62,8 @@ public class MapGen {
     ArrayList<NumberPicker> paramsUI = new ArrayList<>();
     private JFrame frame;
 
-
+	public MapGenData mapData = new MapGenData();
+	
     /**
      * Create the application.
      */
@@ -139,11 +155,12 @@ public class MapGen {
             }
         });
 
-        fillColorToggleButton.setSelected(true);
+        fillColorToggleButton.setSelected(false);
         fillColorToggleButton.addItemListener(new ItemListener() {
             public void itemStateChanged(ItemEvent e) {
                 GraphPanel.isFill = e.getStateChange() == ItemEvent.SELECTED;
 
+                mapPanel.isMetric.setSelected(GraphPanel.isFill);
                 mapPanel.graphPanel.repaint();
             }
         });
@@ -154,10 +171,27 @@ public class MapGen {
                     Param param = Param.params[i];
                     NumberPicker np = paramsUI.get(i);
                     param.value = np.slider.getValue();
-
-                    mapPanel.setMapSize();
                 }
-
+                
+				mapPanel.setMapSize();
+				
+				//in rare case where the generateMap failed due to failed voronoi routine call, repeat the process 5 times
+				int i=0;
+				while(i<5) {
+					try{
+						i++;
+						
+						//mapData.readCsv("d:\\iso\\csv");
+						mapData.generateMap();
+						break;
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+				
+				if(i<5) mapPanel.repaint();
+				else JOptionPane.showMessageDialog(frame, "Error in map generation.");
             }
         });
 
@@ -178,7 +212,6 @@ public class MapGen {
             public void actionPerformed(ActionEvent e) {
                 String fn = dxfInputField.getText().trim();
                 Path path = FileSystems.getDefault().getPath(fn);
-                BufferedWriter writer = null;
 
                 if ("".equals(fn)) {
                     JOptionPane.showMessageDialog(frame, "Please choose a file.");
@@ -209,25 +242,9 @@ public class MapGen {
                     if (ret != JOptionPane.OK_OPTION) return;
                 }
 
-                try {
-                    writer = new BufferedWriter(new FileWriter(fn));
-                    writer.write("test", 0, 4);
-
-                    JOptionPane.showMessageDialog(frame, "DXF File saved.");
-
-                } catch (IOException e1) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                } finally {
-                    if (writer != null) {
-                        try {
-                            writer.close();
-                        } catch (IOException e1) {
-                            // TODO Auto-generated catch block
-                            e1.printStackTrace();
-                        }
-                    }
-                }
+				mapData.createDXFile(fn, 1);
+				
+				JOptionPane.showMessageDialog(frame, "DXF File saved.");
             }
         });
 
@@ -357,7 +374,7 @@ public class MapGen {
         frame.setVisible(true);
         */
 
-        frame.setLocationRelativeTo(null);        //screen center
+        frame.setLocationRelativeTo(null);        //screen center/fullscreen
         frame.setVisible(true);
     }
 }

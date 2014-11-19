@@ -1,33 +1,41 @@
 package com.mapgen;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Polygon;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
+
+import javax.swing.JPanel;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+
+import com.mapgen.map.MapGenData;
 
 @SuppressWarnings("serial")
 public class GraphPanel extends JPanel implements Scrollable {
-    public static final double TOLERANCE = 20;
-    static boolean isFill = true;
-    final Color fixedColor = Color.red;
-    final Color selectColor = Color.pink;
-    //final Color edgeColor = Color.gray;
-    final Color edgeColor = new Color(160, 160, 160);
-    final Color nodeColor = new Color(250, 220, 100);
-    final Color fillColor = new Color(220, 220, 220);
-    final Color stressColor = Color.black;
-    final Color arcColor1 = Color.black;
-    final Color arcColor2 = Color.pink;
-    final Color arcColor3 = Color.red;
-    int nnodes;
-    Node nodes[] = new Node[100];
+	public static boolean isFill = false;
+	
+	private int maxUnitIncrement = 1;
+	
+	public static final double TOLERANCE = 20;
+	
+    public static int nnodes;
+    public static Node nodes[] = new Node[100];
     int nedges;
     Edge edges[] = new Edge[200];
+
     PolyGon polygons[] = new PolyGon[10];
-    Thread relaxer;
-    boolean stress;
+    
     boolean random;
     int numMouseButtonsDown = 0;
     RenderingHints rh;
@@ -39,7 +47,6 @@ public class GraphPanel extends JPanel implements Scrollable {
     Graphics offgraphics;
     ArrayDeque<UndoRedo> undo = new ArrayDeque<UndoRedo>();
     ArrayDeque<UndoRedo> redo = new ArrayDeque<UndoRedo>();
-    private int maxUnitIncrement = 1;
 
     GraphPanel(int m) {
         maxUnitIncrement = m;
@@ -57,9 +64,9 @@ public class GraphPanel extends JPanel implements Scrollable {
         rh.put(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         //rh.put(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         //rh.put(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-
-        init();
-
+    	
+    	//init();
+    	
         addMouseListener(new MouseAdapter() {
 
             @Override
@@ -169,6 +176,17 @@ public class GraphPanel extends JPanel implements Scrollable {
         e.len = len;
         edges[nedges++] = e;
     }
+    
+    final Color fixedColor = Color.red;
+    final Color selectColor = Color.pink;
+    //final Color edgeColor = Color.gray;
+    final Color edgeColor = new Color(160, 160, 160);
+    final Color fillColor = new Color(200, 200, 200);
+    final Color nodeColor = new Color(250, 220, 100);
+    final Color stressColor = Color.black;
+    final Color arcColor1 = Color.black;
+    final Color arcColor2 = Color.pink;
+    final Color arcColor3 = Color.red;
 
     public void paintNode(Graphics g, Node n, FontMetrics fm) {
         int x = (int) n.x;
@@ -189,32 +207,55 @@ public class GraphPanel extends JPanel implements Scrollable {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHints(rh);
 
-        g2.setColor(getBackground());
-        g2.fillRect(0, 0, getWidth(), getHeight());
-
-        if (!isFill) {
-            for (int i = 0; i < nedges; i++) {
-                Edge e = edges[i];
-                int x1 = (int) nodes[e.from].x;
-                int y1 = (int) nodes[e.from].y;
-                int x2 = (int) nodes[e.to].x;
-                int y2 = (int) nodes[e.to].y;
-                int len = (int) Math.abs(Math.sqrt((x1 - x2) * (x1 - x2)
-                        + (y1 - y2) * (y1 - y2)) - e.len);
-                g2.setColor(edgeColor);
-                g2.drawLine(x1, y1, x2, y2);
+        Dimension d = getSize();
+        if ((offscreen == null) || (d.width != offscreensize.width)
+                || (d.height != offscreensize.height)) {
+            offscreen = createImage(d.width, d.height);
+            offscreensize = d;
+            if (offgraphics != null) {
+                offgraphics.dispose();
             }
-        } else {
-            //paint buildings
-
-            //g2.setPaintMode();
-            //g2.setPaint(fillColor);
-            g2.setColor(fillColor);
-            for (int i = 0; i < 3; i++) {
-                polygons[i].normalizeForDraw();
-                g2.fillPolygon(polygons[i].xpoints, polygons[i].ypoints, polygons[i].npoints);
-            }
+            offgraphics = offscreen.getGraphics();
+            offgraphics.setFont(getFont());
         }
+        
+        //((Graphics2D)offgraphics).translate(0, d.height);
+        //((Graphics2D)offgraphics).scale(1, -1);
+		
+        offgraphics.setColor(getBackground());
+        offgraphics.fillRect(0, 0, d.width, d.height);
+        
+        offgraphics.setColor(Color.red);
+        for(Polygon p: MapGenData.builds2)
+        	offgraphics.drawPolygon(p);
+        
+        ArrayList<ArrayList<Integer>> c = MapGenData.c;
+        ArrayList<Integer> indlist = MapGenData.indlist;
+        ArrayList<Polygon> builds = MapGenData.builds;
+        
+        if(indlist != null) {
+        	builds.clear();
+	        for(int i=0; i<indlist.size(); i++) {
+				ArrayList<Integer> pind = c.get(indlist.get(i));
+				Polygon p = new Polygon();
+				for(int j=0; j<pind.size(); j++)
+					p.addPoint((int)nodes[pind.get(j)].x, (int)nodes[pind.get(j)].y);
+				
+				builds.add(p);
+			}
+
+	        for(Polygon p: builds) {
+	        	if(isFill) {
+	        		offgraphics.setColor(fillColor);
+	        		offgraphics.fillPolygon(p);
+	        	}
+	        	
+        		offgraphics.setColor(edgeColor);
+        		offgraphics.drawPolygon(p);
+	        }
+        }
+
+        g.drawImage(offscreen, 0, 0, null);
     }
 
     public void init() {
@@ -254,17 +295,6 @@ public class GraphPanel extends JPanel implements Scrollable {
         polygons[0].add(getNode("x"));
         polygons[1].add(getNode("x"));
         polygons[2].add(getNode("x"));
-
-        /*
-        Dimension d = new Dimension(MapGen.MAP_WIDTH, MapGen.WINDOW_HEIGTH);
-        String center = null;
-        if (center != null) {
-            Node n = this.nodes[this.findNode(center)];
-            n.x = d.width / 2;
-            n.y = d.height / 2;
-            n.fixed = true;
-        }*/
-
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.mapgen;
 
 /**
- * Created by BQ on 2014/10/30 0030.
+ * Created by Michael Zhang on 2014/10/30 0030.
  */
 public class UndoRedo {
     Node node;
