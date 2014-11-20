@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.TreeSet;
 
 import math.geom2d.Point2D;
 import math.geom2d.polygon.MultiPolygon2D;
@@ -65,6 +66,7 @@ public class MapGenData {
 	public static ArrayList<Integer> indlist;							//arraylist of ind set
 	public ArrayList<Double> heights;
 
+	public static ArrayList<ArrayList<Integer>> nodeIndices;			//nodes indices for all facets
 	public static ArrayList<Polygon> builds = new ArrayList<>();		//valid builds
 	public static ArrayList<Polygon> builds2 = new ArrayList<>();		//all facets resulting from voronoi call
 	
@@ -163,7 +165,7 @@ public class MapGenData {
         //Note: depending on vonoroi implementation, some (such as matlab) can accept duplicate points and negative values.
         // some (such as matlab) can output c and v directly
 		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
-		//vb.setTolerance(0);	//no snapping
+		vb.setTolerance(2.0);		//snapping factor
 		vb.setSites(toCoords(voro_Points));
 		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
 
@@ -336,6 +338,7 @@ public class MapGenData {
 
 	}
 
+	
 	//create all valid facets only
 	private void createBuild() {
 		builds.clear();
@@ -344,20 +347,35 @@ public class MapGenData {
 	    for(int i=0; i<indlist.size(); i++) {
 			Polygon p = new Polygon();
 			ArrayList<Integer> pind = c.get(indlist.get(i));
-			for(int j=0; j<pind.size(); j++) {
+			for(int j=0; j<pind.size(); j++)
 				p.addPoint((int)v.get(pind.get(j), 0), (int)v.get(pind.get(j), 1));
-			}
-			builds.add(p);
+			
+			//eliminates triangular and degenerate cases
+			if(p.npoints > 4)	//it is 4 because we repeat the last point with the initial point
+				builds.add(p);
 		}
 	    
-	    GraphPanel.nnodes = v.getNumRows();
-	    GraphPanel.nodes = new Node[v.getNumRows()];
-	    for(int i=0; i<v.getNumRows();i++)
-	        GraphPanel.nodes[i] = new Node(v.get(i, 0), v.get(i, 1));
+	    //generate unique valid points only and their indices for drawing
+	    ArrayList<Node> nodeset = new ArrayList<>();
+	    nodeIndices = new ArrayList<>();
+	    for(Polygon p : builds) {
+	    	ArrayList<Integer> facetIndices = new ArrayList<>();
+	    	for(int i=0; i<p.npoints; i++) {
+	    		Node n = new Node(p.xpoints[i], p.ypoints[i]);
+	    		if(nodeset.contains(n))
+	    			facetIndices.add(nodeset.indexOf(n));
+	    		else {
+	    			nodeset.add(n);
+	    			facetIndices.add(nodeset.size() - 1);
+	    		}
+	    	}
+	    	nodeIndices.add(facetIndices);
+	    }
+	    
+	    GraphPanel.nodes = nodeset;
 		
 		System.out.println("builds#="+builds.size());
 	}
-
 	
 	//create all facets, including those invalid facets
 	@SuppressWarnings("unused")
@@ -580,7 +598,7 @@ public class MapGenData {
 	
 	//create dxf from nodes data reflecting user adjusting
 	private void createDXFile(String fname, int choice,
-			Node[] nodes,
+			ArrayList<Node> nodes,
 			ArrayList<ArrayList<Integer>> builds,
 			ArrayList<Integer> ind,
 			ArrayList<Double> heights,
@@ -605,8 +623,8 @@ public class MapGenData {
 				double height = heights.get(i);
 				
 				for(int j = 0; j < build.size(); j++) {
-					double x = nodes[build.get(j)].getX();
-					double y = nodes[build.get(j)].getY();
+					double x = nodes.get(build.get(j)).getX();
+					double y = nodes.get(build.get(j)).getY();
 			        if ( j != build.size()-1 ) {
 			        	fw.write(String.format("%s\n","BUILD1"));
 			        	fw.write(String.format("%3s\n","10"));

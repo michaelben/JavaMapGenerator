@@ -28,8 +28,7 @@ public class GraphPanel extends JPanel implements Scrollable {
 	
 	public static final double TOLERANCE = 20;
 	
-    public static int nnodes;
-    public static Node nodes[] = new Node[100];
+    public static ArrayList<Node> nodes = new ArrayList<>();
     int nedges;
     Edge edges[] = new Edge[200];
     boolean random;
@@ -65,8 +64,8 @@ public class GraphPanel extends JPanel implements Scrollable {
 
                 int x = e.getX();
                 int y = e.getY();
-                for (int i = 0; i < nnodes; i++) {
-                    Node n = nodes[i];
+                for (int i = 0; i < nodes.size(); i++) {
+                    Node n = nodes.get(i);
                     double dist = (n.x - x) * (n.x - x) + (n.y - y) * (n.y - y);
                     if (dist < bestdist) {
                         pick = n;
@@ -123,8 +122,8 @@ public class GraphPanel extends JPanel implements Scrollable {
     }
 
     int findNode(String lbl) {
-        for (int i = 0; i < nnodes; i++) {
-            if (nodes[i].lbl.equals(lbl)) {
+        for (int i = 0; i < nodes.size(); i++) {
+            if (nodes.get(i).lbl.equals(lbl)) {
                 return i;
             }
         }
@@ -136,8 +135,8 @@ public class GraphPanel extends JPanel implements Scrollable {
         n.x = 10 + 380 * Math.random();
         n.y = 10 + 380 * Math.random();
         n.lbl = lbl;
-        nodes[nnodes] = n;
-        return nnodes++;
+        nodes.add(n);
+        return nodes.size();
     }
 
     void addEdge(String from, String to, int len) {
@@ -201,21 +200,29 @@ public class GraphPanel extends JPanel implements Scrollable {
         offgraphics.setColor(getBackground());
         offgraphics.fillRect(0, 0, d.width, d.height);
         
+        /*
         offgraphics.setColor(Color.red);
         for(Polygon p: MapGenData.builds2)
         	offgraphics.drawPolygon(p);
+        */
         
-        ArrayList<ArrayList<Integer>> c = MapGenData.c;
-        ArrayList<Integer> indlist = MapGenData.indlist;
+        //draw nodes
+        offgraphics.setColor(Color.black);
+        if(nodes != null)
+        	for (Node n : nodes)
+        		offgraphics.fillOval((int)n.x-2, (int)n.y-2, 4, 4);
+        
+        //draw polygon
+        ArrayList<ArrayList<Integer>> nodeIndices = MapGenData.nodeIndices;
         ArrayList<Polygon> builds = MapGenData.builds;
         
-        if(indlist != null) {
+        if(nodeIndices != null) {
         	builds.clear();
-	        for(int i=0; i<indlist.size(); i++) {
-				ArrayList<Integer> pind = c.get(indlist.get(i));
+	        for(int i=0; i<nodeIndices.size(); i++) {
+				ArrayList<Integer> pind = nodeIndices.get(i);
 				Polygon p = new Polygon();
 				for(int j=0; j<pind.size(); j++)
-					p.addPoint((int)nodes[pind.get(j)].x, (int)nodes[pind.get(j)].y);
+					p.addPoint((int)nodes.get(pind.get(j)).x, (int)nodes.get(pind.get(j)).y);
 				
 				builds.add(p);
 			}
