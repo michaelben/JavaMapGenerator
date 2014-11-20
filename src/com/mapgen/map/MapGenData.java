@@ -212,7 +212,7 @@ public class MapGenData {
 		//close open polygons and discard everything that may be outside the map area
 		for (int i = 0; i<N; i++) {
 			ArrayList<Integer> temp = c.get(i);
-		    if (temp.get(0) != temp.get(temp.size() - 1))
+		    if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
 		        c.get(i).add(temp.get(0));  // closing polygons
 		}
 		
@@ -262,7 +262,7 @@ public class MapGenData {
 			
 		    if(c.get(i).size() != 0) {
 				ArrayList<Integer> temp = c.get(i);
-		    	if (temp.get(0) != temp.get(temp.size() - 1))
+		    	if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
 		        c.get(i).add(temp.get(0));  // closing polygons
 		        
 		        for(int k = 0; k < smRoads.size(); k++) {    
