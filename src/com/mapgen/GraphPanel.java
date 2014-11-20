@@ -6,6 +6,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -26,7 +28,7 @@ public class GraphPanel extends JPanel implements Scrollable {
 	
 	private int maxUnitIncrement = 1;
 	
-	public static final double TOLERANCE = 20;
+	public static final double TOLERANCE = 10;
 	
     public static ArrayList<Node> nodes = new ArrayList<>();
     int nedges;
@@ -78,10 +80,20 @@ public class GraphPanel extends JPanel implements Scrollable {
 	                pick.fixed = true;
 	                pick.x = x;
 	                pick.y = y;
+	                
+	                polygonPick = null;
 	
 	                repaint();
                 } else {
                 	pick = null;
+                	
+            		for(Polygon poly : MapGenData.builds)
+            			if(poly.contains(e.getX(), e.getY())) {
+            				polygonPick = poly;
+            				break;
+            			}
+
+	                repaint();
                 }
                 
                 e.consume();
@@ -118,6 +130,21 @@ public class GraphPanel extends JPanel implements Scrollable {
             	}
                 e.consume();
             }
+            
+            /*
+            @Override
+            public void mouseMoved(MouseEvent e) {
+            	if(polygonPick != null) {
+            		for(Polygon poly : MapGenData.builds)
+            			if(poly.contains(e.getX(), e.getY())) {
+            				polygonPick = poly;
+            				break;
+            			}
+
+	                repaint();
+            	}
+                e.consume();
+            }*/
         });
     }
 
@@ -148,6 +175,7 @@ public class GraphPanel extends JPanel implements Scrollable {
     }
     
     Node pick;
+    Polygon polygonPick;
     boolean pickfixed;
     Image offscreen;
     Dimension offscreensize;
@@ -243,8 +271,14 @@ public class GraphPanel extends JPanel implements Scrollable {
 	        
 	        for(Node n : pick.adjacentNodes)
 	        	offgraphics.drawLine((int)pick.x, (int)pick.y, (int)n.x, (int)n.y);
+        } else {
+	        //draw picked polygon
+        	if(polygonPick != null) {
+		        offgraphics.setColor(Color.red);
+				offgraphics.drawPolygon(polygonPick);
+        	}
         }
-        
+		
         g.drawImage(offscreen, 0, 0, null);
     }
 

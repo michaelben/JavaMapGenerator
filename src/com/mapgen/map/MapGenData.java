@@ -365,8 +365,10 @@ public class MapGenData {
 	    		
 	    		facetIndices.add(index);
 	    		
+	    		//add into topology information
 	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
 	    		
+	    		//get its prev and next nodes
 	    		int prev = i - 1;
 	    		int next = i + 1;
 	    		if(i==0 || i==p.npoints-1) {
@@ -374,6 +376,7 @@ public class MapGenData {
 	    			next = 1;
 	    		}
 	    		
+	    		//add into topology information
 	    		Node prevNode = new Node(p.xpoints[prev], p.ypoints[prev]);
 	    		int prevIndex = addNode(nodeset, prevNode);
 	    		nodeset.get(index).adjacentNodes.add(nodeset.get(prevIndex));
