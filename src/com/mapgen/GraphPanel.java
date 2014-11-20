@@ -87,12 +87,17 @@ public class GraphPanel extends JPanel implements Scrollable {
                 } else {
                 	pick = null;
                 	
-            		for(Polygon poly : MapGenData.builds)
-            			if(poly.contains(e.getX(), e.getY())) {
-            				polygonPick = poly;
+                	int i;
+                	ArrayList<Polygon> polys = MapGenData.builds;
+            		for(i=0; i<polys.size(); i++)
+            			if(polys.get(i).contains(e.getX(), e.getY())) {
+            				polygonPick = polys.get(i);
             				break;
             			}
 
+            		if(i == polys.size())
+            			polygonPick = null;
+            		
 	                repaint();
                 }
                 
