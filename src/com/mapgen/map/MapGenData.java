@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
-import java.util.TreeSet;
 
 import math.geom2d.Point2D;
 import math.geom2d.polygon.MultiPolygon2D;
@@ -355,19 +354,33 @@ public class MapGenData {
 				builds.add(p);
 		}
 	    
-	    //generate unique valid points only and their indices for drawing
+	    //generate unique valid points only, and topology information and their indices for drawing
 	    ArrayList<Node> nodeset = new ArrayList<>();
 	    nodeIndices = new ArrayList<>();
 	    for(Polygon p : builds) {
 	    	ArrayList<Integer> facetIndices = new ArrayList<>();
 	    	for(int i=0; i<p.npoints; i++) {
 	    		Node n = new Node(p.xpoints[i], p.ypoints[i]);
-	    		if(nodeset.contains(n))
-	    			facetIndices.add(nodeset.indexOf(n));
-	    		else {
-	    			nodeset.add(n);
-	    			facetIndices.add(nodeset.size() - 1);
+	    		int index = addNode(nodeset, n);
+	    		
+	    		facetIndices.add(index);
+	    		
+	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
+	    		
+	    		int prev = i - 1;
+	    		int next = i + 1;
+	    		if(i==0 || i==p.npoints-1) {
+	    			prev = p.npoints - 2;
+	    			next = 1;
 	    		}
+	    		
+	    		Node prevNode = new Node(p.xpoints[prev], p.ypoints[prev]);
+	    		int prevIndex = addNode(nodeset, prevNode);
+	    		nodeset.get(index).adjacentNodes.add(nodeset.get(prevIndex));
+	    		
+	    		Node nextNode = new Node(p.xpoints[next], p.ypoints[next]);
+	    		int nextIndex = addNode(nodeset, nextNode);
+	    		nodeset.get(index).adjacentNodes.add(nodeset.get(nextIndex));
 	    	}
 	    	nodeIndices.add(facetIndices);
 	    }
@@ -375,6 +388,18 @@ public class MapGenData {
 	    GraphPanel.nodes = nodeset;
 		
 		System.out.println("builds#="+builds.size());
+	}
+	
+	private int addNode(ArrayList<Node> nodeset, Node n) {
+		int index;
+		if(nodeset.contains(n))
+			index = nodeset.indexOf(n);
+		else {
+			nodeset.add(n);
+			index = nodeset.size() - 1;
+		}
+		
+		return index;
 	}
 	
 	//create all facets, including those invalid facets

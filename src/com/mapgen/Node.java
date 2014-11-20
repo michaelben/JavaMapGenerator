@@ -1,6 +1,8 @@
 package com.mapgen;
 
+import java.awt.Polygon;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class Node {
     double x;
@@ -17,6 +19,8 @@ public class Node {
     public Node(double x, double y) {
     	this.x = x;
     	this.y = y;
+    	this.adjacentFaces = new ArrayList<>();
+    	this.adjacentNodes = new HashSet<>();
     }
     
     public double getX() {
@@ -60,11 +64,16 @@ public class Node {
         return String.format("\nx:%.2f y:%.2f", x, y);
     }
 
-    class FaceIndex {
-    	int faceInd;
+    public static class FaceIndex {
+    	Polygon face;
     	int vertexInd;
+    	
+    	public FaceIndex(Polygon face, int vertexInd) {
+    		this.face = face;
+    		this.vertexInd = vertexInd;
+    	}
     }
     
-    ArrayList<FaceIndex> faceIndices = new ArrayList<>();
-    
+    public ArrayList<FaceIndex> adjacentFaces;
+    public HashSet<Node> adjacentNodes;
 }

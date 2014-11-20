@@ -213,19 +213,17 @@ public class GraphPanel extends JPanel implements Scrollable {
         		offgraphics.fillOval((int)n.x-2, (int)n.y-2, 4, 4);
         
         //draw polygon
-        ArrayList<ArrayList<Integer>> nodeIndices = MapGenData.nodeIndices;
         ArrayList<Polygon> builds = MapGenData.builds;
         
-        if(nodeIndices != null) {
-        	builds.clear();
-	        for(int i=0; i<nodeIndices.size(); i++) {
-				ArrayList<Integer> pind = nodeIndices.get(i);
-				Polygon p = new Polygon();
-				for(int j=0; j<pind.size(); j++)
-					p.addPoint((int)nodes.get(pind.get(j)).x, (int)nodes.get(pind.get(j)).y);
-				
-				builds.add(p);
-			}
+        if(builds != null) {
+        	//update builds info when dragging
+        	if(pick != null)
+	        	for(Node.FaceIndex faceind : pick.adjacentFaces) {
+	        		Polygon face = faceind.face;
+	        		int index = faceind.vertexInd;
+	        		face.xpoints[index] = (int)pick.x;
+	        		face.ypoints[index] = (int)pick.y;
+	        	}
 
 	        for(Polygon p: builds) {
 	        	if(isFill) {
@@ -238,6 +236,15 @@ public class GraphPanel extends JPanel implements Scrollable {
 	        }
         }
 
+        //draw picked point and its adjacent edges
+        if(pick != null) {
+	        offgraphics.setColor(Color.red);
+	        offgraphics.fillOval((int)pick.x-2, (int)pick.y-2, 4, 4);
+	        
+	        for(Node n : pick.adjacentNodes)
+	        	offgraphics.drawLine((int)pick.x, (int)pick.y, (int)n.x, (int)n.y);
+        }
+        
         g.drawImage(offscreen, 0, 0, null);
     }
 
