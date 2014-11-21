@@ -6,14 +6,15 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.MouseInfo;
-import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
@@ -122,6 +123,10 @@ public class GraphPanel extends JPanel implements Scrollable {
                 
                 e.consume();
             }
+            
+            public void mouseClicked(MouseEvent e) {
+                requestFocusInWindow();
+            }
         });
 
         addMouseMotionListener(new MouseAdapter() {
@@ -135,21 +140,33 @@ public class GraphPanel extends JPanel implements Scrollable {
             	}
                 e.consume();
             }
-            
-            /*
-            @Override
-            public void mouseMoved(MouseEvent e) {
-            	if(polygonPick != null) {
-            		for(Polygon poly : MapGenData.builds)
-            			if(poly.contains(e.getX(), e.getY())) {
-            				polygonPick = poly;
-            				break;
-            			}
 
-	                repaint();
-            	}
-                e.consume();
-            }*/
+        });
+        
+        setRequestFocusEnabled(true);
+        addKeyListener(new KeyListener() {
+
+			@Override
+			public void keyTyped(KeyEvent e) {
+				if(e.getKeyChar() == 'd') {
+					deletePolygon();
+					repaint();
+				}
+				e.consume();
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+        	
         });
     }
 
@@ -287,6 +304,42 @@ public class GraphPanel extends JPanel implements Scrollable {
         g.drawImage(offscreen, 0, 0, null);
     }
 
+    //delete the picked polygon
+    public void deletePolygon() {
+    	if(polygonPick == null) return;
+    	
+    	HashSet<Node> pnodes = new HashSet<>();
+    	for (int i=0; i<polygonPick.npoints; i++) {
+    		Node node = new Node(polygonPick.xpoints[i], polygonPick.ypoints[i]);
+    		for(Node n : nodes)
+    			if(n.equalsInt(node)) {
+    				pnodes.add(n);
+    				break;
+    			}
+    	}
+    	
+    	//remove face
+    	ArrayList<Polygon> builds = MapGenData.builds;
+    	builds.remove(polygonPick);
+    	
+    	for(Node node : pnodes) {
+    		for(Node.FaceIndex faceInd : node.adjacentFaces)
+    			if(faceInd.face == polygonPick) {
+    				node.adjacentFaces.remove(faceInd);
+    				break;
+    			}
+
+    		//this node does not have any adjacent faces, remove it
+    		if(node.adjacentFaces.size() == 0) {
+    			nodes.remove(node);
+    			for(Node n : node.adjacentNodes) 
+    	    		n.adjacentNodes.remove(node);
+    		}
+    	}
+    	
+    	polygonPick = null;
+    }
+    
     public void init() {
 
         //String edges = "a1-a2,a2-a3,a3-a4,a4-a5,a5-a6,b1-b2,b2-b3,b3-b4,b4-b5,b5-b6,c1-c2,c2-c3,c3-c4,c4-c5,c5-c6,x-a1,x-b1,x-c1,x-a6,x-b6,x-c6";

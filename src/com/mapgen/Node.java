@@ -64,9 +64,24 @@ public class Node {
         return String.format("\nx:%.2f y:%.2f", x, y);
     }
 
+    public boolean equalsInt(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Node other = (Node) obj;
+        if ((int)x != (int)other.x)
+            return false;
+        if ((int)y != (int)other.y)
+            return false;
+        return true;
+    }
+    
     public static class FaceIndex {
-    	Polygon face;
-    	int vertexInd;
+    	public Polygon face;
+    	public int vertexInd;
     	
     	public FaceIndex(Polygon face, int vertexInd) {
     		this.face = face;

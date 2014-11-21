@@ -320,7 +320,8 @@ public class MapGenData {
 		//and we assign a height to each building
 		heights = new ArrayList<>();
 		Random rand = new Random();
-		for(int i = 0; i < ind.size(); i++) {
+		indlist = new ArrayList<>(ind);
+		for(int i = 0; i < indlist.size(); i++) {
 		        // random height calculation using a normal Gaussian distribution with 
 		        // average value (heightMean) and standard divergence (heightStd) that have been given by the user
 		    
@@ -342,6 +343,8 @@ public class MapGenData {
 	private void createBuild() {
 		builds.clear();
 	    
+		int removed = 0;
+		
 		//create builds for draw
 	    for(int i=0; i<indlist.size(); i++) {
 			Polygon p = new Polygon();
@@ -352,7 +355,10 @@ public class MapGenData {
 			//eliminates triangular and degenerate cases
 			if(p.npoints > 4)	//it is 4 because we repeat the last point with the initial point
 				builds.add(p);
+			else removed++;
 		}
+	    
+	    heights.subList(0, removed).clear();
 	    
 	    //generate unique valid points only, and topology information and their indices for drawing
 	    ArrayList<Node> nodeset = new ArrayList<>();
@@ -365,8 +371,17 @@ public class MapGenData {
 	    		
 	    		facetIndices.add(index);
 	    		
-	    		//add into topology information
-	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
+	    		//add into face topology information
+	    		ArrayList<Node.FaceIndex> fis = nodeset.get(index).adjacentFaces;
+	    		int ii;
+	    		for(ii=0; ii<fis.size(); ii++) {
+	    			Node.FaceIndex fi = fis.get(ii);
+	    			if(fi.face == p)
+	    				break;
+	    		}
+	    		
+	    		if(ii == fis.size())
+	    			nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
 	    		
 	    		//get its prev and next nodes
 	    		int prev = i - 1;
@@ -376,7 +391,7 @@ public class MapGenData {
 	    			next = 1;
 	    		}
 	    		
-	    		//add into topology information
+	    		//add into edge topology information
 	    		Node prevNode = new Node(p.xpoints[prev], p.ypoints[prev]);
 	    		int prevIndex = addNode(nodeset, prevNode);
 	    		nodeset.get(index).adjacentNodes.add(nodeset.get(prevIndex));
@@ -619,16 +634,14 @@ public class MapGenData {
 	
 	public void createDXFile(String fname, int choice) {
 		if(GraphPanel.nodes != null)
-			this.createDXFile(fname, choice, GraphPanel.nodes, c, new ArrayList<>(ind), heights, xMargin, yMargin);
+			this.createDXFile(fname, choice, builds, heights, xMargin, yMargin);
 		else
 			this.createDXFile(fname, choice, v, c, new ArrayList<>(ind), heights, xMargin, yMargin);
 	}
 	
 	//create dxf from nodes data reflecting user adjusting
 	private void createDXFile(String fname, int choice,
-			ArrayList<Node> nodes,
-			ArrayList<ArrayList<Integer>> builds,
-			ArrayList<Integer> ind,
+			ArrayList<Polygon> builds,
 			ArrayList<Double> heights,
 			double xMargin,
 			double yMargin) {
@@ -642,18 +655,18 @@ public class MapGenData {
 			fw.write(DXF_header);
 			fw.write("\n");
 			
-			for(int i = 0; i < ind.size(); i++) {
-			    ArrayList<Integer> build = builds.get(ind.get(i));
+			for(int i = 0; i < builds.size(); i++) {
+			    Polygon build = builds.get(i);
 			    
 			    fw.write(facet_header);
 				fw.write("\n");
 				
 				double height = heights.get(i);
 				
-				for(int j = 0; j < build.size(); j++) {
-					double x = nodes.get(build.get(j)).getX();
-					double y = nodes.get(build.get(j)).getY();
-			        if ( j != build.size()-1 ) {
+				for(int j = 0; j < build.npoints; j++) {
+					double x = build.xpoints[j];
+					double y = build.ypoints[j];
+			        if ( j != build.npoints-1 ) {
 			        	fw.write(String.format("%s\n","BUILD1"));
 			        	fw.write(String.format("%3s\n","10"));
 			        	fw.write(String.format("%.1f\n",x));
@@ -797,7 +810,7 @@ public class MapGenData {
 			String buf;
 			
 			try {
-				InputStream is=MapGenData.class.getClassLoader().getResourceAsStream(fn);
+				InputStream is=MapGenData.class.getClassLoader().getResourceAsStream("res/"+fn);
 				BufferedReader in = new BufferedReader(new InputStreamReader(is));
 				while((buf= in.readLine()) != null) {
 					sb.append(buf, 0, buf.length());
