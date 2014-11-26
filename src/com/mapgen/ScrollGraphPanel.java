@@ -71,6 +71,7 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 		graphPanel.setPreferredSize(new Dimension(Param.getMapWidth(), Param.getMapHeight()));
 		columnView.setPreferredWidth(Param.getMapWidth());
 		rowView.setPreferredHeight(Param.getMapHeight());
+		graphPanel.polygonPick = null;
 	}
 	
 	public void itemStateChanged(ItemEvent e) {

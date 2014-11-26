@@ -372,6 +372,7 @@ public class MapGenData {
 	    		facetIndices.add(index);
 	    		
 	    		//add into face topology information
+	    		/*
 	    		ArrayList<Node.FaceIndex> fis = nodeset.get(index).adjacentFaces;
 	    		int ii;
 	    		for(ii=0; ii<fis.size(); ii++) {
@@ -381,7 +382,8 @@ public class MapGenData {
 	    		}
 	    		
 	    		if(ii == fis.size())
-	    			nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
+	    			*/
+	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
 	    		
 	    		//get its prev and next nodes
 	    		int prev = i - 1;

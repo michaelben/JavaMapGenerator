@@ -15,6 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
@@ -311,6 +312,9 @@ public class GraphPanel extends JPanel implements Scrollable {
     	HashSet<Node> pnodes = new HashSet<>();
     	for (int i=0; i<polygonPick.npoints; i++) {
     		Node node = new Node(polygonPick.xpoints[i], polygonPick.ypoints[i]);
+    		//we need to get the node object in nodes rather than the newly created node because we need
+    		//the topology information contained in nodes. also note that all nodes in nodes are casted into ints during builds,
+    		//so equalsInt is really the same as equals.
     		for(Node n : nodes)
     			if(n.equalsInt(node)) {
     				pnodes.add(n);
@@ -318,22 +322,49 @@ public class GraphPanel extends JPanel implements Scrollable {
     			}
     	}
     	
-    	//remove face
+    	//remove this facet
     	ArrayList<Polygon> builds = MapGenData.builds;
     	builds.remove(polygonPick);
     	
     	for(Node node : pnodes) {
-    		for(Node.FaceIndex faceInd : node.adjacentFaces)
-    			if(faceInd.face == polygonPick) {
-    				node.adjacentFaces.remove(faceInd);
-    				break;
-    			}
+    		//remove facet associated with this node.
+    		//note that we have to loop through the end
+    		//since this node might be both first and last nodes for the polygon resulting have 2 same facets.
+    		//We need to use Iterator because we remove element during iteration.
+    		Iterator<Node.FaceIndex> iterFace=node.adjacentFaces.iterator();
+    		while(iterFace.hasNext()) {
+    			Node.FaceIndex faceInd=(Node.FaceIndex)iterFace.next();
+    			if(faceInd.face == polygonPick)
+    				iterFace.remove();
+    		}
 
-    		//this node does not have any adjacent faces, remove it
+    		//this node does not have any adjacent faces, remove it and all edges associated with it
     		if(node.adjacentFaces.size() == 0) {
     			nodes.remove(node);
     			for(Node n : node.adjacentNodes) 
     	    		n.adjacentNodes.remove(node);
+    		}
+    		
+    		//If one of this node's adjacentNodes does not share any facet with this node,
+    		//then remove the edge between the 2 nodes.
+    		//We need to use Iterator because we remove element during iteration.
+    		Iterator<Node> iter=node.adjacentNodes.iterator();
+    		while(iter.hasNext()) {
+    			Node n=(Node)iter.next();
+    			HashSet<Polygon> np = new HashSet<>();
+    			HashSet<Polygon> nodep = new HashSet<>();
+    			
+    			for(Node.FaceIndex faceInd : n.adjacentFaces)
+    				np.add(faceInd.face);
+    			
+    			for(Node.FaceIndex faceInd : node.adjacentFaces)
+    				nodep.add(faceInd.face);
+    			
+    			np.retainAll(nodep);
+    			if(np.isEmpty()) {
+    				iter.remove();
+    				n.adjacentNodes.remove(node);
+    			}
     		}
     	}
     	
