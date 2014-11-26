@@ -8,10 +8,9 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
@@ -22,11 +21,15 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.mapgen.map.MapGenData;
 
@@ -40,19 +43,22 @@ public class MapGen {
 	
 	//get screen size excluding system tray
 	public static Rectangle desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();		
-	
+    final JButton deleteButton = new JButton("Delete");
+    final JToggleButton urbanToggleButton = new JToggleButton("Urban");
+    static final JToggleButton filledToggleButton = new JToggleButton("Unfilled");
 	//public static final int MAP_WIDTH = WINDOW_WIDTH - CONTROL_WIDTH;
 	
 	private JFrame frame;
 	private final JPanel ctlPanel = new JPanel();
 	private final ScrollGraphPanel mapPanel = new ScrollGraphPanel();
 	private final JTextField dxfInputField = new JTextField();
-	private final JButton browseButton = new JButton("Browse...");
 	private final JButton outputDXFButton = new JButton("Output DXF");
 	private final JPanel paramPanel = new JPanel();
 	private final JPanel dxfPanel = new JPanel();
 	private final JButton resetButton = new JButton("Reset");
 	private final JButton genmapButton = new JButton("Generate Map");
+	private final JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
+	JFileChooser jfc = new JFileChooser();
 	
 	ArrayList<NumberPicker> paramsUI = new ArrayList<NumberPicker>();
 	
@@ -118,8 +124,51 @@ public class MapGen {
 			}
 		});
 		
+        deleteButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                GraphPanel gp = mapPanel.graphPanel;
+                
+                gp.deletePolygon();
+				gp.repaint();
+            }
+        });
+
+        urbanToggleButton.setSelected(true);
+        urbanToggleButton.addItemListener(new ItemListener() {
+            public void itemStateChanged(ItemEvent e) {
+                MapGenData.isUrban = e.getStateChange() == ItemEvent.SELECTED;
+
+                if(MapGenData.isUrban)
+                	urbanToggleButton.setText("Urban");
+                else
+                	urbanToggleButton.setText("Suburban");
+            }
+        });
+
+        filledToggleButton.setSelected(false);
+        filledToggleButton.addItemListener(new ItemListener() {
+            public void itemStateChanged(ItemEvent e) {
+                GraphPanel.isFill = e.getStateChange() == ItemEvent.SELECTED;
+
+                if(GraphPanel.isFill)
+                	filledToggleButton.setText("Filled");
+                else
+                	filledToggleButton.setText("Unfilled");
+                
+                mapPanel.isMetric.setSelected(GraphPanel.isFill);
+                mapPanel.graphPanel.repaint();
+            }
+        });
+
 		genmapButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				resetButton.setEnabled(false);
+				urbanToggleButton.setEnabled(false);
+				genmapButton.setEnabled(false);
+				deleteButton.setEnabled(false);
+				filledToggleButton.setEnabled(false);
+				outputDXFButton.setEnabled(false);
+				
 				for(int i = 0; i < Param.params.length; i++) {
 					Param param = Param.params[i];
 					NumberPicker np = paramsUI.get(i);
@@ -139,68 +188,45 @@ public class MapGen {
 						break;
 					} catch (Exception e1) {
 						// TODO Auto-generated catch block
-						e1.printStackTrace();
+						//e1.printStackTrace();
 					}
 				}
 				
 				if(i<5) mapPanel.repaint();
 				else JOptionPane.showMessageDialog(frame, "Error in map generation.");
-			}
-		});
-		
-		browseButton.addActionListener(new ActionListener() {
-			JFileChooser jfc = new JFileChooser();
-			public void actionPerformed(ActionEvent e) {
-				int returnVal = jfc.showOpenDialog(frame);
 				
-		        if (returnVal == JFileChooser.APPROVE_OPTION) {
-		            File file = jfc.getSelectedFile();
-		            dxfInputField.setText(file.getAbsolutePath());
-		        }
+				resetButton.setEnabled(true);
+				urbanToggleButton.setEnabled(true);
+				genmapButton.setEnabled(true);
+				deleteButton.setEnabled(true);
+				filledToggleButton.setEnabled(true);
+				outputDXFButton.setEnabled(true);
 			}
 		});
 		
 		outputDXFButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String fn = dxfInputField.getText().trim();
-				Path path = FileSystems.getDefault().getPath(fn);
-				
-				if("".equals(fn)) {
-					JOptionPane.showMessageDialog(frame, "Please choose a file.");
-					return;
-				}
-				
-				if(Files.isDirectory(path)) {
-					JOptionPane.showMessageDialog(frame, "This is a folder. Please choose a file.");
-					return;
-				}
-				
-				if(Files.exists(path) && !Files.isWritable(path)) {
-					JOptionPane.showMessageDialog(frame, "This file is not writable.");
-					return;
-				}
-				
-				if(Files.exists(path) && !Files.isRegularFile(path)) {
-					JOptionPane.showMessageDialog(frame, "This file is not a regular file.");
-					return;
-				}
-				
-				if(Files.isRegularFile(path) && Files.exists(path)) {
-					 Object[] options = { "OK", "CANCEL" };
-					 int ret = JOptionPane.showOptionDialog(null, "File exits. Do you want to override it?", "Warning",
-					             JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
-					             null, options, options[0]);
-					 
-					 if(ret != JOptionPane.OK_OPTION) return;
-				}
-				
-				mapData.createDXFile(fn, 1);
-				
-				JOptionPane.showMessageDialog(frame, "DXF File saved.");
+			public void actionPerformed(ActionEvent e) {				
+				FileNameExtensionFilter filter = new FileNameExtensionFilter(
+				        "DXF file", "dxf");
+				jfc.setFileFilter(filter);
+				int returnVal = jfc.showSaveDialog(frame);
+		        if (returnVal == JFileChooser.APPROVE_OPTION) {
+		            String file = null;
+					try {
+						file = jfc.getSelectedFile().getCanonicalPath();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					if(file != null) {
+			            dxfInputField.setText(file);   
+			            mapData.createDXFile(file, 1);
+					}
+		        }
 			}
 		});
 		
-		dxfInputField.setColumns(10);
+		dxfInputField.setEditable(false);;
 		
 		ctlPanel.setBorder(new LineBorder(new Color(0, 0, 0)));
 		ctlPanel.setPreferredSize(new Dimension(CONTROL_WIDTH, desktopBounds.height));
@@ -215,7 +241,6 @@ public class MapGen {
 		JPanel dxfPanelx = new JPanel();
 		dxfPanelx.setLayout(new BoxLayout(dxfPanelx, BoxLayout.LINE_AXIS));
 		dxfPanelx.add(dxfInputField);
-		dxfPanelx.add(browseButton);
 		JPanel dxfPanely = new JPanel();
 		dxfPanely.setLayout(new BoxLayout(dxfPanely, BoxLayout.LINE_AXIS));
 		dxfPanely.add(outputDXFButton);
@@ -228,10 +253,22 @@ public class MapGen {
 					.addGroup(gl_ctlPanel.createParallelGroup(Alignment.LEADING)
 						.addComponent(dxfPanel, GroupLayout.PREFERRED_SIZE, 317, GroupLayout.PREFERRED_SIZE)
 						.addGroup(gl_ctlPanel.createSequentialGroup()
-							.addGap(54)
+							.addGap(50)
 							.addComponent(resetButton)
-							.addGap(20)
-							.addComponent(genmapButton))
+							.addGap(50)
+							.addComponent(urbanToggleButton)
+							.addGap(10))
+						.addGroup(gl_ctlPanel.createSequentialGroup()
+							.addGap(100)
+							.addComponent(genmapButton)
+							.addGap(10))
+						.addComponent(separator)	
+						.addGroup(gl_ctlPanel.createSequentialGroup()
+                            .addGap(10)
+                            .addComponent(deleteButton)
+                            .addGap(10)
+                            .addComponent(filledToggleButton)
+                            .addGap(10))
 						.addGroup(gl_ctlPanel.createSequentialGroup()
 							.addGap(1)
 							.addComponent(paramPanel, GroupLayout.PREFERRED_SIZE, 317, GroupLayout.PREFERRED_SIZE)))
@@ -245,8 +282,15 @@ public class MapGen {
 					.addPreferredGap(ComponentPlacement.RELATED)
 					.addGroup(gl_ctlPanel.createParallelGroup(Alignment.LEADING)
 						.addComponent(resetButton)
-						.addComponent(genmapButton))
-					.addGap(2)
+						.addComponent(urbanToggleButton))
+					.addGap(10)
+					.addComponent(genmapButton, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+					.addComponent(separator)	
+					.addGap(30)
+	                .addGroup(gl_ctlPanel.createParallelGroup(Alignment.LEADING)
+	                        .addComponent(deleteButton)
+	                        .addComponent(filledToggleButton))
+	                .addGap(30)
 					.addComponent(dxfPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 					.addContainerGap(GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
 		);

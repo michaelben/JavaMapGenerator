@@ -18,8 +18,8 @@ import javax.swing.JToggleButton;
 public class ScrollGraphPanel extends JPanel implements ItemListener {
 	private Rule columnView;
 	private Rule rowView;
-	private JToggleButton isMetric;
-	private GraphPanel graphPanel;
+	JToggleButton isMetric;
+	GraphPanel graphPanel;
 
 	public ScrollGraphPanel() {
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -75,18 +75,9 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 	}
 	
 	public void itemStateChanged(ItemEvent e) {
-		if (e.getStateChange() == ItemEvent.SELECTED) {
-			// Turn it to metric.
-			//rowView.setIsMetric(true);
-			//columnView.setIsMetric(true);
-			GraphPanel.isFill = true;
-		} else {
-			// Turn it to inches.
-			//rowView.setIsMetric(false);
-			//columnView.setIsMetric(false);
-			GraphPanel.isFill = false;
-		}
+		GraphPanel.isFill = e.getStateChange() == ItemEvent.SELECTED;
 		
+		MapGen.filledToggleButton.setSelected(GraphPanel.isFill);
 		graphPanel.setMaxUnitIncrement(rowView.getIncrement());
 		
 		graphPanel.repaint();
