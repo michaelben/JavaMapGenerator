@@ -341,6 +341,7 @@ public class MapGenData {
 	    	for(int i=0; i<p.npoints; i++) {
 	    		Node n = new Node(p.xpoints[i], p.ypoints[i]);
 	    		int index = addNode(nodeset, n);
+	    		n = nodeset.get(index);
 	    		
 	    		facetIndices.add(index);
 	    		
@@ -356,7 +357,7 @@ public class MapGenData {
 	    		
 	    		if(ii == fis.size())
 	    			*/
-	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
+	    		n.adjacentFaces.add(new Node.FaceIndex(p, i));
 	    		
 	    		//get its prev and next nodes
 	    		int prev = i - 1;
@@ -368,12 +369,12 @@ public class MapGenData {
 	    		
 	    		//add into edge topology information
 	    		Node prevNode = new Node(p.xpoints[prev], p.ypoints[prev]);
-	    		int prevIndex = addNode(nodeset, prevNode);
-	    		nodeset.get(index).adjacentNodes.add(nodeset.get(prevIndex));
+	    		prevNode = getNode(nodeset, prevNode);
+	    		n.adjacentNodes.add(prevNode);
 	    		
 	    		Node nextNode = new Node(p.xpoints[next], p.ypoints[next]);
-	    		int nextIndex = addNode(nodeset, nextNode);
-	    		nodeset.get(index).adjacentNodes.add(nodeset.get(nextIndex));
+	    		nextNode = getNode(nodeset, nextNode);
+	    		n.adjacentNodes.add(nextNode);
 	    	}
 	    	nodeIndices.add(facetIndices);
 	    }
@@ -382,15 +383,32 @@ public class MapGenData {
 	}
 	
 	private int addNode(ArrayList<Node> nodeset, Node n) {
+		/*
 		int index;
 		if(nodeset.contains(n))
 			index = nodeset.indexOf(n);
 		else {
 			nodeset.add(n);
 			index = nodeset.size() - 1;
+		}*/
+		
+		int index = nodeset.indexOf(n);
+		if(index == -1) {
+			nodeset.add(n);
+			index = nodeset.size() - 1;
 		}
 		
 		return index;
+	}
+	
+	public static Node getNode(ArrayList<Node> nodeset, Node n) {
+		int index = nodeset.indexOf(n);
+		if(index == -1) {
+			nodeset.add(n);
+			index = nodeset.size() - 1;
+		}
+		
+		return nodeset.get(index);
 	}
 	
 	//create all facets, including those invalid facets

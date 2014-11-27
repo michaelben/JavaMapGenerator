@@ -23,12 +23,12 @@ public class Param {
 	}
 	
 	public static Param[] params = {
-		new Param("map x-axis length(~1000m)", 10000, 1, 1000, 100),
-		new Param("map y-axis length(~1000m)", 10000, 1, 800, 100),
+		new Param("map x-axis length(~1000m)", 10000, 100, 1000, 100),
+		new Param("map y-axis length(~1000m)", 10000, 100, 800, 100),
 		new Param("average street width(>15m)", 100, 1, 15, 1),
-		new Param("street width divergence(m)", 100, 1, 2, 1),
+		new Param("street width divergence(m)", 100, 0, 2, 1),
 		new Param("average building height(m)", 100, 1, 7, 1),
-		new Param("building height divergence(m)", 100, 1, 6, 1),
+		new Param("building height divergence(m)", 100, 0, 6, 1),
 		new Param("building facade length(m)", 100, 1, 30, 1),
 		new Param("roads & building density factor", 100, 5, 50, 1)
 	};

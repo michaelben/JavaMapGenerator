@@ -5,13 +5,16 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.GraphicsEnvironment;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
@@ -129,36 +132,78 @@ public class MapGen {
         undoButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 GraphPanel gp = mapPanel.graphPanel;
-                /*
-                ArrayDeque<UndoRedo> undoStack = gp.undo;
-                ArrayDeque<UndoRedo> redoStack = gp.redo;
+                ArrayDeque<HashMap<String, Object>> undoStack = gp.undo;
+                ArrayDeque<HashMap<String, Object>> redoStack = gp.redo;
                 if (!undoStack.isEmpty()) {
-                    UndoRedo undo = undoStack.pop();
-                    redoStack.push(new UndoRedo(undo.node, undo.node.x, undo.node.y));
-                    undo.node.x = undo.oldx;
-                    undo.node.y = undo.oldy;
-
-                    gp.repaint();
+                    HashMap<String, Object> action = undoStack.pop();
+                    String type = (String)action.get("actionType");
+                    if("vertexDrag".equalsIgnoreCase(type)) {
+	                    Node node = (Node)action.get("node");
+	                    int oldx = ((Integer)action.get("oldx")).intValue();
+	                    int oldy = ((Integer)action.get("oldy")).intValue();
+	                    action.put("oldx", (int)node.x);
+	                    action.put("oldy", (int)node.y);
+	                    redoStack.push(action);
+	                    node.x = oldx;
+	                    node.y = oldy;
+	                    
+	    	        	for(Node.FaceIndex faceind : node.adjacentFaces) {
+	    	        		Polygon face = faceind.face;
+	    	        		int index = faceind.vertexInd;
+	    	        		face.xpoints[index] = (int)node.x;
+	    	        		face.ypoints[index] = (int)node.y;
+	    	        	}
+	                    
+	                    gp.repaint();
+                    } else if("delete".equalsIgnoreCase(type)) {
+                    	Polygon polygon = (Polygon)action.get("polygon");
+                    	@SuppressWarnings("unchecked")
+						ArrayList<Node> pnodes = (ArrayList<Node>)action.get("pnodes");
+                    	redoStack.push(action);
+                    	gp.unDeletePolygon(polygon, pnodes);
+                    	
+                    	gp.repaint();
+                    }
                 }
-                */
             }
         });
 
         redoButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 GraphPanel gp = mapPanel.graphPanel;
-                /*
-                ArrayDeque<UndoRedo> undoStack = gp.undo;
-                ArrayDeque<UndoRedo> redoStack = gp.redo;
+                ArrayDeque<HashMap<String, Object>> undoStack = gp.undo;
+                ArrayDeque<HashMap<String, Object>> redoStack = gp.redo;
                 if (!redoStack.isEmpty()) {
-                    UndoRedo redo = redoStack.pop();
-                    undoStack.push(new UndoRedo(redo.node, redo.node.x, redo.node.y));
-                    redo.node.x = redo.oldx;
-                    redo.node.y = redo.oldy;
-
-                    gp.repaint();
+                	HashMap<String, Object> action = redoStack.pop();
+                	String type = (String)action.get("actionType");
+                    if("vertexDrag".equalsIgnoreCase(type)) {
+                    	Node node = (Node)action.get("node");
+	                    int oldx = ((Integer)action.get("oldx")).intValue();
+	                    int oldy = ((Integer)action.get("oldy")).intValue();
+	                    action.put("oldx", (int)node.x);
+	                    action.put("oldy", (int)node.y);
+	                    undoStack.push(action);
+	                    node.x = oldx;
+	                    node.y = oldy;
+	                    
+	    	        	for(Node.FaceIndex faceind : node.adjacentFaces) {
+	    	        		Polygon face = faceind.face;
+	    	        		int index = faceind.vertexInd;
+	    	        		face.xpoints[index] = (int)node.x;
+	    	        		face.ypoints[index] = (int)node.y;
+	    	        	}
+                    	
+                    	gp.repaint();
+                    } else if("delete".equalsIgnoreCase(type)) {
+                    	Polygon polygon = (Polygon)action.get("polygon");
+                    	@SuppressWarnings("unchecked")
+						ArrayList<Node> pnodes = (ArrayList<Node>)action.get("pnodes");
+                    	undoStack.push(action);
+                    	gp.deletePolygon(polygon, pnodes);
+                    	
+                    	gp.repaint();
+                    }
                 }
-                */
             }
         });
         
@@ -166,7 +211,7 @@ public class MapGen {
             public void actionPerformed(ActionEvent e) {
                 GraphPanel gp = mapPanel.graphPanel;
                 
-                gp.deletePolygon();
+                gp.deletePolygon(gp.polygonPick);
 				gp.repaint();
             }
         });
@@ -198,6 +243,12 @@ public class MapGen {
             }
         });
 
+        undoButton.setEnabled(false);
+		redoButton.setEnabled(false);
+		deleteButton.setEnabled(false);
+		//filledToggleButton.setEnabled(false);
+		outputDXFButton.setEnabled(false);
+		
 		genmapButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				resetButton.setEnabled(false);

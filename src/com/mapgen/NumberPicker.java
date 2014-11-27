@@ -119,7 +119,7 @@ public class NumberPicker extends JPanel {
 		add(spinner);
 		
 		slider = new JSlider(min, max, def);
-		slider.setExtent(step);
+		//slider.setExtent(step);	//slider must obey value+extent<=max so the maximal value is max-extant
 		slider.setBounds(40, 22, 221, 25);
 		slider.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {

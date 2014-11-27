@@ -13,7 +13,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.StringTokenizer;
@@ -39,6 +41,9 @@ public class GraphPanel extends JPanel implements Scrollable {
     int numMouseButtonsDown = 0;
     
     RenderingHints rh;
+    
+    ArrayDeque<HashMap<String, Object>> undo = new ArrayDeque<>();
+    ArrayDeque<HashMap<String, Object>> redo = new ArrayDeque<>();
 
     GraphPanel(int m) {
     	maxUnitIncrement = m;
@@ -84,7 +89,16 @@ public class GraphPanel extends JPanel implements Scrollable {
 	                pick.y = y;
 	                
 	                polygonPick = null;
-	
+	                
+	                //save state
+	                HashMap<String, Object> action = new HashMap<>();
+	                action.put("actionType", "vertexDrag");
+	                action.put("node", pick);
+	                action.put("oldx", x);
+	                action.put("oldy", y);
+	                undo.push(action);
+	                redo.clear();
+	                
 	                repaint();
                 } else {
                 	pick = null;
@@ -150,7 +164,7 @@ public class GraphPanel extends JPanel implements Scrollable {
 			@Override
 			public void keyTyped(KeyEvent e) {
 				if(e.getKeyChar() == 'd') {
-					deletePolygon();
+					deletePolygon(polygonPick);
 					repaint();
 				}
 				e.consume();
@@ -305,44 +319,68 @@ public class GraphPanel extends JPanel implements Scrollable {
         g.drawImage(offscreen, 0, 0, null);
     }
 
-    //delete the picked polygon
-    public void deletePolygon() {
+    //delete a polygon
+    public void deletePolygon(Polygon polygonPick) {
     	if(polygonPick == null) return;
     	
-    	HashSet<Node> pnodes = new HashSet<>();
+    	ArrayList<Node> pnodes = new ArrayList<>();
     	for (int i=0; i<polygonPick.npoints; i++) {
     		Node node = new Node(polygonPick.xpoints[i], polygonPick.ypoints[i]);
     		//we need to get the node object in nodes rather than the newly created node because we need
     		//the topology information contained in nodes. also note that all nodes in nodes are casted into ints during builds,
     		//so equalsInt is really the same as equals.
+    		/*
     		for(Node n : nodes)
     			if(n.equalsInt(node)) {
     				pnodes.add(n);
     				break;
     			}
+    			*/
+    		int index = nodes.indexOf(node);
+    		if(index > 0) pnodes.add(nodes.get(index));
     	}
     	
+    	//save state
+    	HashMap<String, Object> action = new HashMap<>();
+    	action.put("actionType", "delete");
+    	action.put("polygon", polygonPick);
+    	action.put("pnodes", pnodes);
+    	undo.push(action);
+    	redo.clear();
+    	
+    	deletePolygon(polygonPick, pnodes);
+    }
+    
+    //delete a polygon
+    public void deletePolygon(Polygon polygonPick, ArrayList<Node> pnodes) {
+    	if(pnodes == null || pnodes.isEmpty()) return;
+
     	//remove this facet
     	ArrayList<Polygon> builds = MapGenData.builds;
     	builds.remove(polygonPick);
     	
     	for(Node node : pnodes) {
-    		//remove facet associated with this node.
-    		//note that we have to loop through the end
-    		//since this node might be both first and last nodes for the polygon resulting have 2 same facets.
-    		//We need to use Iterator because we remove element during iteration.
+    		//remove facets associated with this node.
+    		//we need to use Iterator because we remove element during iteration.
     		Iterator<Node.FaceIndex> iterFace=node.adjacentFaces.iterator();
     		while(iterFace.hasNext()) {
     			Node.FaceIndex faceInd=(Node.FaceIndex)iterFace.next();
-    			if(faceInd.face == polygonPick)
+    			if(faceInd.face == polygonPick) {
     				iterFace.remove();
+    				break;
+    			}
     		}
 
     		//this node does not have any adjacent faces, remove it and all edges associated with it
     		if(node.adjacentFaces.size() == 0) {
     			nodes.remove(node);
-    			for(Node n : node.adjacentNodes) 
-    	    		n.adjacentNodes.remove(node);
+    			
+    			Iterator<Node> iter=node.adjacentNodes.iterator();
+    			while(iter.hasNext()) {
+        			Node n=(Node)iter.next();
+        			iter.remove();
+    				n.adjacentNodes.remove(node);
+    			}
     		}
     		
     		//If one of this node's adjacentNodes does not share any facet with this node,
@@ -368,7 +406,50 @@ public class GraphPanel extends JPanel implements Scrollable {
     		}
     	}
     	
-    	polygonPick = null;
+    	this.polygonPick = null;
+    }
+    
+    //undelete a polygon
+    public void unDeletePolygon(Polygon polygonPick, ArrayList<Node> pnodes) {
+    	if(polygonPick == null) return;
+
+    	int i = 0;
+    	for (Node node : pnodes) {
+    		node = MapGenData.getNode(nodes, node);
+
+    		node.adjacentFaces.add(new Node.FaceIndex(polygonPick, i));
+    		
+    		//get its prev and next nodes
+    		int prev = i - 1;
+    		int next = i + 1;
+    		if(i==0 || i==polygonPick.npoints-1) {
+    			prev = polygonPick.npoints - 2;
+    			next = 1;
+    		}
+    		
+    		//add into edge topology information
+    		Node prevNode = new Node(polygonPick.xpoints[prev], polygonPick.ypoints[prev]);
+    		prevNode = MapGenData.getNode(nodes, prevNode);
+    		node.adjacentNodes.add(prevNode);
+    		
+    		Node nextNode = new Node(polygonPick.xpoints[next], polygonPick.ypoints[next]);
+    		nextNode = MapGenData.getNode(nodes, nextNode);
+    		node.adjacentNodes.add(nextNode);
+    		
+    		i++;
+    	}
+    	
+    	//polygonPick vertices coordinates might have changed since last deletion, so we have to restore them
+    	for(int j=0; j<polygonPick.npoints; j++) {
+    		polygonPick.xpoints[j] = (int)pnodes.get(j).getX();
+    		polygonPick.ypoints[j] = (int)pnodes.get(j).getY();
+    	}
+    	
+    	//add this facet
+    	ArrayList<Polygon> builds = MapGenData.builds;
+    	builds.add(polygonPick);
+    	
+    	this.polygonPick = polygonPick;
     }
     
     public void init() {
