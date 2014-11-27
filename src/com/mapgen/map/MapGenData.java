@@ -133,11 +133,6 @@ public class MapGenData {
 		//in order to find and render only buildings that do not fall into roads
 		B = find(B1, roads);
 		
-		System.out.println("B1="+B1.getNumRows());
-		System.out.println("B="+B.getNumRows());
-		System.out.println("tempD="+tempD.size());
-		System.out.println("wpRoad1="+wpRoad1.size());
-		
 		//voronoi points composed of B, unique roads points and unique wpRoads points
 		voro_Points = new ArrayList<>();
 		for(int i=0; i<B.getNumRows(); i++)
@@ -171,10 +166,7 @@ public class MapGenData {
 		//JTS vonoroi routine does not return c and v directly, so we have to obtain them manually
 		c.clear();
         v = getVC(faces);
-        
-        //System.out.println("vertices="+v);
-        //System.out.println("c="+c);
-        
+
         //for some vonoroi routine(matlab), the order of faces returned from vonoroi routine is the same as the order of input points.
         //but for JTS, the order of faces returned from vonoroi routine is not the same as the order of input points.
         //we need to make them same in order to group them into B, roads and wpRoads for further processing        
@@ -189,14 +181,6 @@ public class MapGenData {
         }
 		
         c = sameOrder;
-        
-        //System.out.println("c="+c);
-        
-        //System.out.println("voro_Points="+voro_Points);
-        System.out.println("faces="+faces.getNumGeometries());
-        System.out.println("voro_Points="+voro_Points.size());
-		System.out.println("total="+v.getNumRows());
-		System.out.println("c="+c.size());
 		
 		int N;
 		if(isUrban)
@@ -238,8 +222,6 @@ public class MapGenData {
 		    if(j == facet.size()) ind.add(i);
 		}
 		
-		System.out.println("ind size="+ind.size());
-		
 		//find those invalid facets crossing over roads
 		for(int i = 0; i < N; i++) {    
 			    // checking if one or more sides of buildings intersect roads
@@ -251,8 +233,6 @@ public class MapGenData {
 			            ind1.add(i); 
 			    }
 		}
-
-		System.out.println("ind1 size="+ind1.size());
 		
 		// we check if the buildings located close to the main road (Road) fall into the 
 		// smaller road (smRoad)
@@ -271,14 +251,10 @@ public class MapGenData {
 		        }
 		    }	
 		}
-		          
-		System.out.println("ind2 size="+ind2.size());
 		
 		ind1.addAll(ind2);
 		
 		ind.removeAll(ind1);
-		
-		System.out.println("ind size="+ind.size());
 		
 		// now all valid buildings are c.get(ind.get(i)) which are a set of indices into v
 		
@@ -309,12 +285,7 @@ public class MapGenData {
 				rem.add(indlist.get(i));
 		}
 		
-		System.out.println("#removed="+rem.size());
-		//System.out.println("buildArea="+buildArea);
-		System.out.println("#buildArea="+buildArea.size());
-		
 		ind.removeAll(rem);
-		System.out.println("ind size after area="+ind.size());
 		
 		//we create a database of variable heights 
 		//and we assign a height to each building
@@ -406,8 +377,6 @@ public class MapGenData {
 	    }
 	    
 	    GraphPanel.nodes = nodeset;
-		
-		System.out.println("builds#="+builds.size());
 	}
 	
 	private int addNode(ArrayList<Node> nodeset, Node n) {
@@ -437,8 +406,6 @@ public class MapGenData {
 
 			builds2.add(poly);
 		}
-
-		System.out.println("builds total#="+builds2.size());
 	}
 	
 	public static final double TOLERANCE = 1.0;
@@ -473,8 +440,6 @@ public class MapGenData {
 		roadCentre = SimpleMatrix.random(numRoads, 1, 2*roadWidth, xMargin-(2*roadWidth), new Random());
 		//if any 2 roads are too close, we adjust them
 		minDistanceRoad();
-		
-		System.out.println(roadCentre);
 		
 		Random rand = new Random();
 
@@ -955,7 +920,6 @@ public class MapGenData {
 			double x = coord.getX();
 			double y = coord.getY();
 			if((x == pts.get(i).getX()) && (y == pts.get(i).getY())) {
-				System.out.println("x="+x+", y="+y);
 					return i;
 			}
 			else continue;
