@@ -160,6 +160,10 @@ public class MapGen {
             }
         });
 
+		deleteButton.setEnabled(false);
+		filledToggleButton.setEnabled(false);
+		outputDXFButton.setEnabled(false);
+		
 		genmapButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				resetButton.setEnabled(false);

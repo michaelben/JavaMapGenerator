@@ -158,8 +158,11 @@ public class GraphPanel extends JPanel implements Scrollable {
 
 			@Override
 			public void keyPressed(KeyEvent e) {
-				// TODO Auto-generated method stub
-				
+				if(e.getKeyCode() == KeyEvent.VK_DELETE) {
+					deletePolygon();
+					repaint();
+				}
+				e.consume();
 			}
 
 			@Override
