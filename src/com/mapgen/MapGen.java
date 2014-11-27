@@ -42,7 +42,9 @@ public class MapGen {
 	//Toolkit.getScreenSize();	screensize including system tray
 	
 	//get screen size excluding system tray
-	public static Rectangle desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();		
+	public static Rectangle desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+    final JButton undoButton = new JButton("Undo");
+    final JButton redoButton = new JButton("Redo");
     final JButton deleteButton = new JButton("Delete");
     final JToggleButton urbanToggleButton = new JToggleButton("Urban");
     static final JToggleButton filledToggleButton = new JToggleButton("Unfilled");
@@ -124,6 +126,42 @@ public class MapGen {
 			}
 		});
 		
+        undoButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                GraphPanel gp = mapPanel.graphPanel;
+                /*
+                ArrayDeque<UndoRedo> undoStack = gp.undo;
+                ArrayDeque<UndoRedo> redoStack = gp.redo;
+                if (!undoStack.isEmpty()) {
+                    UndoRedo undo = undoStack.pop();
+                    redoStack.push(new UndoRedo(undo.node, undo.node.x, undo.node.y));
+                    undo.node.x = undo.oldx;
+                    undo.node.y = undo.oldy;
+
+                    gp.repaint();
+                }
+                */
+            }
+        });
+
+        redoButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                GraphPanel gp = mapPanel.graphPanel;
+                /*
+                ArrayDeque<UndoRedo> undoStack = gp.undo;
+                ArrayDeque<UndoRedo> redoStack = gp.redo;
+                if (!redoStack.isEmpty()) {
+                    UndoRedo redo = redoStack.pop();
+                    undoStack.push(new UndoRedo(redo.node, redo.node.x, redo.node.y));
+                    redo.node.x = redo.oldx;
+                    redo.node.y = redo.oldy;
+
+                    gp.repaint();
+                }
+                */
+            }
+        });
+        
         deleteButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 GraphPanel gp = mapPanel.graphPanel;
@@ -165,6 +203,8 @@ public class MapGen {
 				resetButton.setEnabled(false);
 				urbanToggleButton.setEnabled(false);
 				genmapButton.setEnabled(false);
+				undoButton.setEnabled(false);
+				redoButton.setEnabled(false);
 				deleteButton.setEnabled(false);
 				filledToggleButton.setEnabled(false);
 				outputDXFButton.setEnabled(false);
@@ -198,6 +238,8 @@ public class MapGen {
 				resetButton.setEnabled(true);
 				urbanToggleButton.setEnabled(true);
 				genmapButton.setEnabled(true);
+				undoButton.setEnabled(true);
+				redoButton.setEnabled(true);
 				deleteButton.setEnabled(true);
 				filledToggleButton.setEnabled(true);
 				outputDXFButton.setEnabled(true);
@@ -247,6 +289,8 @@ public class MapGen {
 		dxfPanel.add(dxfPanelx);
 		dxfPanel.add(dxfPanely);
 		GroupLayout gl_ctlPanel = new GroupLayout(ctlPanel);
+		//gl_ctlPanel.linkSize(SwingConstants.HORIZONTAL, resetButton, urbanToggleButton);
+		//gl_ctlPanel.linkSize(SwingConstants.HORIZONTAL, undoButton, redoButton, deleteButton, filledToggleButton);
 		gl_ctlPanel.setHorizontalGroup(
 			gl_ctlPanel.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_ctlPanel.createSequentialGroup()
@@ -264,6 +308,10 @@ public class MapGen {
 							.addGap(10))
 						.addComponent(separator)	
 						.addGroup(gl_ctlPanel.createSequentialGroup()
+							.addGap(10)
+                            .addComponent(undoButton)
+                            .addGap(10)
+                            .addComponent(redoButton)
                             .addGap(10)
                             .addComponent(deleteButton)
                             .addGap(10)
@@ -278,7 +326,7 @@ public class MapGen {
 			gl_ctlPanel.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_ctlPanel.createSequentialGroup()
 					.addGap(2)
-					.addComponent(paramPanel, GroupLayout.PREFERRED_SIZE, 451, GroupLayout.PREFERRED_SIZE)
+					.addComponent(paramPanel, GroupLayout.PREFERRED_SIZE, 480, GroupLayout.PREFERRED_SIZE)
 					.addPreferredGap(ComponentPlacement.RELATED)
 					.addGroup(gl_ctlPanel.createParallelGroup(Alignment.LEADING)
 						.addComponent(resetButton)
@@ -288,6 +336,8 @@ public class MapGen {
 					.addComponent(separator)	
 					.addGap(30)
 	                .addGroup(gl_ctlPanel.createParallelGroup(Alignment.LEADING)
+	                		.addComponent(undoButton)
+	                		.addComponent(redoButton)
 	                        .addComponent(deleteButton)
 	                        .addComponent(filledToggleButton))
 	                .addGap(30)
@@ -313,6 +363,9 @@ public class MapGen {
 					.addComponent(paramsUI.get(6), GroupLayout.PREFERRED_SIZE, 305, GroupLayout.PREFERRED_SIZE)
 					.addContainerGap())
 				.addGroup(gl_paramPanel.createSequentialGroup()
+					.addComponent(paramsUI.get(7), GroupLayout.PREFERRED_SIZE, 305, GroupLayout.PREFERRED_SIZE)
+					.addContainerGap())
+				.addGroup(gl_paramPanel.createSequentialGroup()
 					.addGroup(gl_paramPanel.createParallelGroup(Alignment.TRAILING, false)
 						.addComponent(paramsUI.get(0), Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 						.addComponent(paramsUI.get(1), Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 305, Short.MAX_VALUE))
@@ -334,7 +387,9 @@ public class MapGen {
 					.addComponent(paramsUI.get(5), GroupLayout.PREFERRED_SIZE, 51, GroupLayout.PREFERRED_SIZE)
 					.addPreferredGap(ComponentPlacement.RELATED)
 					.addComponent(paramsUI.get(6), GroupLayout.PREFERRED_SIZE, 51, GroupLayout.PREFERRED_SIZE)
-					.addContainerGap(35, Short.MAX_VALUE))
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addComponent(paramsUI.get(7), GroupLayout.PREFERRED_SIZE, 51, GroupLayout.PREFERRED_SIZE)
+					.addContainerGap(50, Short.MAX_VALUE))
 		);
 		paramPanel.setLayout(gl_paramPanel);
 		ctlPanel.setLayout(gl_ctlPanel);

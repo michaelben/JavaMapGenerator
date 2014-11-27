@@ -55,6 +55,7 @@ public class MapGenData {
 	private double heightMean;		//average building height
 	private double heightStd;		//building heigth divergence
 	private double dist;			//building facade length
+	private double densityFactor;			//building and roads density factor
 	
 	private DenseMatrix64F B1;		//randomly generated points for voro_Points
 	private DenseMatrix64F B;		//B1 subtract those points falling inside roads
@@ -81,6 +82,7 @@ public class MapGenData {
 		heightMean = Param.params[4].value;
 		heightStd = Param.params[5].value; 
 		dist = Param.params[6].value;
+		densityFactor = Param.params[7].value;
 		
 		//reset collections
 		if(voro_Points != null) voro_Points.clear();
@@ -94,8 +96,8 @@ public class MapGenData {
 	public void generateMap() {
 		initParam();
 		
-		int dense = (int)Math.floor((xMargin + yMargin)/8);
-		numRoads = (int)Math.floor((xMargin + yMargin)/200);
+		int dense = (int)(Math.floor((xMargin + yMargin)/8) * densityFactor/50);
+		numRoads = (int)(Math.floor((xMargin + yMargin)/200) * densityFactor/50);
 
 		//result into roads, wpRoads and smRoads
 		generateRoads();
