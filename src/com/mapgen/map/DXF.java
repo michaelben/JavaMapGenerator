@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class DXF {
 	public static final String DXF_header_fn = "header.dxf";
@@ -47,50 +48,52 @@ public class DXF {
 					double x = build.xpoints[j];
 					double y = build.ypoints[j];
 			        if ( j != build.npoints-1 ) {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","VERTEX"));
-			        	fw.write(String.format("%3s\n","8"));
+			        	//use US locale to produce decimal point as dot, rather than comma when running locally in Greence.
+			        	//this prevents corruption if loaded the generated dxf file into DBConverter program.
+			        	fw.write(String.format(Locale.US, "%s\n","BUILD1"));
+			        	fw.write(String.format(Locale.US, "%3s\n","10"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",x));
+			        	fw.write(String.format(Locale.US, "%3s\n","20"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",y));
+			        	fw.write(String.format(Locale.US, "%3s\n","30"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",height));
+			        	fw.write(String.format(Locale.US, "%3s\n","70"));
+			        	fw.write(String.format(Locale.US, "%6s\n","32"));
+			        	fw.write(String.format(Locale.US, "%3s\n","0"));
+			        	fw.write(String.format(Locale.US, "%s\n","VERTEX"));
+			        	fw.write(String.format(Locale.US, "%3s\n","8"));
 			        } else {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","SEQEND"));
-			        	fw.write(String.format("%3s\n","8"));
-			        	fw.write(String.format("%s\n","POLYLINE"));
-			        	fw.write(String.format("%3s\n","8"));
+			        	fw.write(String.format(Locale.US, "%s\n","BUILD1"));
+			        	fw.write(String.format(Locale.US, "%3s\n","10"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",x));
+			        	fw.write(String.format(Locale.US, "%3s\n","20"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",y));
+			        	fw.write(String.format(Locale.US, "%3s\n","30"));
+			        	fw.write(String.format(Locale.US, "%.1f\n",height));
+			        	fw.write(String.format(Locale.US, "%3s\n","70"));
+			        	fw.write(String.format(Locale.US, "%6s\n","32"));
+			        	fw.write(String.format(Locale.US, "%3s\n","0"));
+			        	fw.write(String.format(Locale.US, "%s\n","SEQEND"));
+			        	fw.write(String.format(Locale.US, "%3s\n","8"));
+			        	fw.write(String.format(Locale.US, "%s\n","POLYLINE"));
+			        	fw.write(String.format(Locale.US, "%3s\n","8"));
 			        }
 				}
 			}
 			
 			for(int k = 0; k <= xMargin; k = k + 10)
 			    for(int l = 0; l <= yMargin; l = l + 10) {
-			    	fw.write(String.format("%s\n","INSERT"));
-			    	fw.write(String.format("%3s\n","8"));
-			    	fw.write(String.format("%s\n","DEM_10M_CROSS"));
-			    	fw.write(String.format("%3s\n","2"));
-			    	fw.write(String.format("%s\n","CROSS"));
-			    	fw.write(String.format("%3s\n","10"));
-			    	fw.write(String.format("%.1f\n",(float)k));
-			    	fw.write(String.format("%3s\n","20"));
-			    	fw.write(String.format("%.1f\n",(float)l));
-			    	fw.write(String.format("%3s\n","30"));
-			    	fw.write(String.format("%.1f\n",0.0));
+			    	fw.write(String.format(Locale.US, "%s\n","INSERT"));
+			    	fw.write(String.format(Locale.US, "%3s\n","8"));
+			    	fw.write(String.format(Locale.US, "%s\n","DEM_10M_CROSS"));
+			    	fw.write(String.format(Locale.US, "%3s\n","2"));
+			    	fw.write(String.format(Locale.US, "%s\n","CROSS"));
+			    	fw.write(String.format(Locale.US, "%3s\n","10"));
+			    	fw.write(String.format(Locale.US, "%.1f\n",(float)k));
+			    	fw.write(String.format(Locale.US, "%3s\n","20"));
+			    	fw.write(String.format(Locale.US, "%.1f\n",(float)l));
+			    	fw.write(String.format(Locale.US, "%3s\n","30"));
+			    	fw.write(String.format(Locale.US, "%.1f\n",0.0));
 			    }
 		
 			fw.close();

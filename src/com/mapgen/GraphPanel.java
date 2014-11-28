@@ -194,8 +194,8 @@ public class GraphPanel extends JPanel implements Scrollable {
             offgraphics.setFont(getFont());
         }
 
-        //((Graphics2D)offgraphics).translate(0, d.height);
-        //((Graphics2D)offgraphics).scale(1, -1);
+        ((Graphics2D)offgraphics).translate(0, d.height);
+        ((Graphics2D)offgraphics).scale(1, -1);
 		
         offgraphics.setColor(getBackground());
         offgraphics.fillRect(0, 0, d.width, d.height);
