@@ -10,7 +10,6 @@ public class Node {
     double dx;
     double dy;
     boolean fixed;
-    String lbl;
 
     public Node () {
     	this(0,0);
@@ -63,22 +62,8 @@ public class Node {
     public String toString(){
         return String.format("\nx:%.2f y:%.2f", x, y);
     }
-
-    public boolean equalsInt(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Node other = (Node) obj;
-        if ((int)x != (int)other.x)
-            return false;
-        if ((int)y != (int)other.y)
-            return false;
-        return true;
-    }
     
+    //the following are topology information used for deletion operation and other possible operations such undo/redo
     public static class FaceIndex {
     	public Polygon face;
     	public int vertexInd;
@@ -89,6 +74,6 @@ public class Node {
     	}
     }
     
-    public ArrayList<FaceIndex> adjacentFaces;
-    public HashSet<Node> adjacentNodes;
+    public ArrayList<FaceIndex> adjacentFaces;	    //adjacent facets for this node
+    public HashSet<Node> adjacentNodes;				//edges for this node
 }

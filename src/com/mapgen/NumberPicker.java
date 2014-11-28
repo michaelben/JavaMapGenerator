@@ -53,6 +53,8 @@ public class NumberPicker extends JPanel {
 		initGUI();
 	}
 
+	//this is used to fix a small bug in FormattedTextField attached to Spinner,
+	//also allows customization.
 	private static class NumberEditorFormatter extends NumberFormatter {
         private final SpinnerNumberModel model;
 

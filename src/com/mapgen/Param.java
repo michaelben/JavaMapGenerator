@@ -29,7 +29,8 @@ public class Param {
 		new Param("street width divergence(m)", 100, 0, 2, 1),
 		new Param("average building height(m)", 100, 1, 7, 1),
 		new Param("building height divergence(m)", 100, 0, 6, 1),
-		new Param("building facade length(m)", 100, 1, 30, 1)
+		new Param("building facade length(m)", 100, 1, 30, 1),
+		new Param("roads & building density factor", 100, 5, 50, 1)
 	};
 	
 	public static int getMapWidth() {
@@ -38,5 +39,29 @@ public class Param {
 	
 	public static int getMapHeight() {
 		return params[1].value;
+	}
+	
+	public static int getAvgStreetWidth() {
+		return params[2].value;
+	}
+	
+	public static int getStreetWidthStd() {
+		return params[3].value;
+	}
+	
+	public static int getAvgBuildingHeight() {
+		return params[4].value;
+	}
+	
+	public static int getBuildingHeightStd() {
+		return params[5].value;
+	}
+	
+	public static int getBuildingFacadeLength() {
+		return params[6].value;
+	}
+	
+	public static int getDensityFactor() {
+		return params[7].value;
 	}
 }

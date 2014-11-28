@@ -1,271 +1,284 @@
 package com.mapgen.map;
 
 import java.awt.Polygon;
+import java.awt.geom.Path2D;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 
 import math.geom2d.Point2D;
-import math.geom2d.polygon.MultiPolygon2D;
 import math.geom2d.polygon.Polygon2D;
 import math.geom2d.polygon.Polygons2D;
+import math.geom2d.polygon.Rectangle2D;
 import math.geom2d.polygon.SimplePolygon2D;
 
-import org.ejml.data.DenseMatrix64F;
-import org.ejml.ops.CommonOps;
-import org.ejml.simple.SimpleMatrix;
-
-import com.mapgen.GraphPanel;
-import com.mapgen.Node;
-import com.mapgen.Param;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.triangulate.VoronoiDiagramBuilder;
+import com.mapgen.GraphPanel;
+import com.mapgen.MapGen;
+import com.mapgen.Node;
+import com.mapgen.Param;
+import com.mapgen.util.Range;
+import com.mapgen.util.Utils;
 
-//TODO: this entire class is directly converted from matlab code.
-// better to use basic data structure and clean up all intermediate data structures and variable/method names.
-// maybe remove dependency on EJML-core, EJML-equation and javaGeom libraries and rely on JTS only.
+/* This class is converted from matlab code.
+ * 
+ * JTS is used for voronoi diagram generation.
+   JavaGeom is used for polygon intersection and polygon area calculation.(there is no area calculation in Java2D library!)
+   
+   It might possibly remove dependency on JavaGeom libraries, and rely on JTS only.
+   */
 public class MapGenData {
-	public static boolean isUrban = true;	//urban map or suburban map
+	private boolean isUrban = true;	//urban map or suburban map
 	
-	int numRoads;
-	SimpleMatrix roadCentre;	//a set of random points composing roads
-
-	ArrayList<ArrayList<Point2D>> roads = new ArrayList<ArrayList<Point2D>>();		//roads
-	ArrayList<ArrayList<Point2D>> wpRoads = new ArrayList<ArrayList<Point2D>>();	//roads center line
-	ArrayList<ArrayList<Point2D>> smRoads = new ArrayList<ArrayList<Point2D>>();	//small roads between roads and roads center line
-	ArrayList<Point2D> tempD;		//roads into one list
-	ArrayList<Point2D> wpRoad1;		//wpRoads into one list
-	int numD;						//number of roads
-	double maxHeight;
-	
-	public double xMargin;			//map x-axis length
-	public double yMargin;			//map y-axis length
+	private double xMargin;			//map x-axis length
+	private double yMargin;			//map y-axis length
 	private double roadWidth;		//average street width
 	private double roadStd;			//street width divergence
 	private double heightMean;		//average building height
 	private double heightStd;		//building heigth divergence
 	private double dist;			//building facade length
+	private double densityFactor;	//roads and building density factor
 	
-	private DenseMatrix64F B1;		//randomly generated points for voro_Points
-	private DenseMatrix64F B;		//B1 subtract those points falling inside roads
-	private ArrayList<Point2D> voro_Points;	//input points feeding into voronoi routine, composed of B, roads and wpRoads
-	public static DenseMatrix64F v;			//result from voronoi. all vertices composed of voronoi diagram
-	public static ArrayList<ArrayList<Integer>> c = new ArrayList<>();	//result from voronoi. all facets composed of voronoi diagram
-	public static HashSet<Integer> ind;									//indices into c for valid facets
-	public static ArrayList<Integer> indlist;							//arraylist of ind set
-	public ArrayList<Double> heights;
+	private int numRoads;			//number of roads to be generated
+	private RoadFactory roadFactory;
+	private ArrayList<ArrayList<Point2D>> roads;		//roads to be generated
+	private ArrayList<ArrayList<Point2D>> wpRoads;		//roads center line
+	private ArrayList<ArrayList<Point2D>> smRoads;		//small roads between roads and roads center line
+	
+	private ArrayList<Point2D> uniqueRoads;				//unique set of points for roads
+	private ArrayList<Point2D> uniqueWpRoads;			//unique set of points for wpRoads
+	
+	//randomly generated points for voro_Points
+	private ArrayList<Point2D> randomPoints;
+	
+	//randomPoints minus those points falling inside roads
+	private ArrayList<Point2D> validRandomPoints;
+	
+	//input points feeding into voronoi routine, composed of validRandomPoints, uniqueRoads and uniqueWpRoads
+	private ArrayList<Point2D> voronoiPoints;
+	
+	//result from voronoi diagram generation. all unique vertices for all facets comprised of voronoi diagram
+	private ArrayList<Point2D> voronoiDiagramVertices;
+	
+	//result from voronoi diagram generation. all facets comprised of voronoi diagram
+	//each facet contains a set of vertices pointing to the index of voronoiDiagramVertices
+	private ArrayList<ArrayList<Integer>> voronoiDiagramFacets = new ArrayList<>();
+	
+	//indices into voronoiDiagramFacets for valid facets
+	private HashSet<Integer> validFacetsIndices;
+	
+	//arraylist of validFacetsIndices set
+	private ArrayList<Integer> validFacetsIndexlist;
+	
+	//building heights
+	private ArrayList<Double> heights;
 
-	public static ArrayList<ArrayList<Integer>> nodeIndices;			//nodes indices for all facets
-	public static ArrayList<Polygon> builds = new ArrayList<>();		//valid builds
-	public static ArrayList<Polygon> builds2 = new ArrayList<>();		//all facets resulting from voronoi call
+	//nodes indices for all builds(facets)
+	private ArrayList<ArrayList<Integer>> nodeIndices;
 	
-	public MapGenData() {
+	//valid builds to be generated
+	private ArrayList<Polygon> builds;
+	
+	private MapGen mapgen;
+	private GraphPanel graphPanel;
+
+	private DXF dxf;
+	
+	public MapGenData(MapGen mapgen) {
+		this.mapgen = mapgen;
+		this.graphPanel = mapgen.getMapPanel().getGraphPanel();
+		this.builds = graphPanel.getBuilds();
+		
 		initParam();
+		
+		roadFactory = new RoadFactory(roadWidth, roadStd, 0, xMargin, yMargin, dist);
+		dxf = new DXF();
 	}
 
 	private void initParam() {
-		xMargin = Param.params[0].value;
-		yMargin = Param.params[1].value; 
-		roadWidth = Param.params[2].value;
-		roadStd = Param.params[3].value;
-		heightMean = Param.params[4].value;
-		heightStd = Param.params[5].value; 
-		dist = Param.params[6].value;
+		xMargin = Param.getMapWidth();
+		yMargin = Param.getMapHeight(); 
+		roadWidth = Param.getAvgStreetWidth();
+		roadStd = Param.getStreetWidthStd();
+		heightMean = Param.getAvgBuildingHeight();
+		heightStd = Param.getBuildingHeightStd(); 
+		dist = Param.getBuildingFacadeLength();
+		densityFactor = Param.getDensityFactor();
 		
+		builds = mapgen.getMapPanel().getGraphPanel().getBuilds();
+				
 		//reset collections
-		if(voro_Points != null) voro_Points.clear();
-		if(ind != null) ind.clear();
-		if(indlist != null) indlist.clear();
+		if(voronoiPoints != null) voronoiPoints.clear();
+		if(validFacetsIndices != null) validFacetsIndices.clear();
+		if(validFacetsIndexlist != null) validFacetsIndexlist.clear();
 		if(heights != null) heights.clear();
 		if(builds != null) builds.clear();
-		if(builds2 != null) builds2.clear();
 	}
 	
 	public void generateMap() {
 		initParam();
 		
-		int dense = (int)Math.floor((xMargin + yMargin)/8);
-		numRoads = (int)Math.floor((xMargin + yMargin)/200);
+		//number of roads to be generated
+		numRoads = (int)(Math.floor((xMargin + yMargin)/200) * densityFactor/50);
 
-		//result into roads, wpRoads and smRoads
-		generateRoads();
+		//generated random roads into roads, wpRoads and smRoads
+		roadFactory.setNumRoads(numRoads);
+		roadFactory.generateRoads();
+		roads = roadFactory.getRoads();
+		wpRoads = roadFactory.getWpRoads();
+		smRoads = roadFactory.getSmRoads();
 		
 		//pick random points for vonoroi routine
-		B1 = SimpleMatrix.random(dense, 2, 0.0, 1.0, new Random()).getMatrix();
-		if ( xMargin == yMargin) {
-		    CommonOps.scale(xMargin, B1);
-		} else {			
-			for(int i=0; i<B1.getNumRows(); i++) {
-				B1.set(i, 0, B1.get(i, 0) * xMargin);
-				B1.set(i, 1, B1.get(i, 1) * yMargin);
-			}
-		}
+		int pointsDensity = (int)(Math.floor((xMargin + yMargin)/8) * densityFactor/50);
+		randomPoints = Utils.generateRandomPoints(pointsDensity, new Range(0, 0, xMargin, yMargin));
 
 		//get all unique points from roads
-		tempD = new ArrayList<>();
-		for(ArrayList<Point2D> ps : roads) {
-			for(Point2D p: ps) {
-				if(exist(tempD, p) >= 0) continue;
-				else tempD.add(p);
-			}
-		}
+		HashSet<Point2D> pset = new HashSet<>();
+		for(ArrayList<Point2D> ps : roads)
+			for(Point2D p: ps)
+				pset.add(p);
+		uniqueRoads = new ArrayList<>(pset);
 		
 		//get all unique points from wpRoads
-		wpRoad1 = new ArrayList<>();
-		for(ArrayList<Point2D> ps : wpRoads) {
-			for(Point2D p: ps) {
-				if(exist(wpRoad1, p) >= 0) continue;
-				else wpRoad1.add(p);
-			}
-		}
+		pset.clear();
+		for(ArrayList<Point2D> ps : wpRoads)
+			for(Point2D p: ps)
+				pset.add(p);
+		uniqueWpRoads = new ArrayList<>(pset);
 		
 		//checking if the randomly picked points fall into the roads 
 		//in order to find and render only buildings that do not fall into roads
-		B = find(B1, roads);
-		
-		//voronoi points composed of B, unique roads points and unique wpRoads points
-		voro_Points = new ArrayList<>();
-		for(int i=0; i<B.getNumRows(); i++)
-			voro_Points.add(new Point2D(B.get(i, 0), B.get(i, 1)));
+		validRandomPoints = getValidRandomPoints(randomPoints, roads);
 
-		for(int i=0; i<tempD.size(); i++)
-			voro_Points.add(tempD.get(i));
+		//voronoi points composed of validRandomPoints, unique roads points and unique wpRoads points
+		voronoiPoints = new ArrayList<>();
+		for(int i=0; i<validRandomPoints.size(); i++)
+			voronoiPoints.add(validRandomPoints.get(i));
+
+		for(int i=0; i<uniqueRoads.size(); i++)
+			voronoiPoints.add(uniqueRoads.get(i));
 		
-		for(int i=0; i<wpRoad1.size(); i++)
-			voro_Points.add(wpRoad1.get(i));
+		for(int i=0; i<uniqueWpRoads.size(); i++)
+			voronoiPoints.add(uniqueWpRoads.get(i));
 		
 		//discard all points falling out of the map area
         ArrayList<Point2D> invalid = new ArrayList<>();
-        for(Point2D p:voro_Points) {
+        for(Point2D p:voronoiPoints) {
         	if(p.getX() <= 0 || p.getX() >= xMargin || p.getY() <= 0 || p.getY() >= yMargin)
         		invalid.add(p);
         }
         
         //we comment out the following 2 lines because JTS voronoi routine can accept duplicate points and negative values
-        //voro_Points.removeAll(invalid);
-		//removeTooClose(voro_Points);
-		
-        //call vonoroi routine using JTS library
-        //Note: depending on vonoroi implementation, some (such as matlab) can accept duplicate points and negative values.
-        // some (such as matlab) can output c and v directly
-		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
-		vb.setTolerance(2.0);		//snapping factor
-		vb.setSites(toCoords(voro_Points));
-		GeometryCollection faces = (GeometryCollection) vb.getDiagram(new GeometryFactory());
-
-		//JTS vonoroi routine does not return c and v directly, so we have to obtain them manually
-		c.clear();
-        v = getVC(faces);
+        //voronoiPoints.removeAll(invalid);
+		//removeTooClose(voronoiPoints);
+        
+        getVoronoiDiagram(voronoiPoints);
 
         //for some vonoroi routine(matlab), the order of faces returned from vonoroi routine is the same as the order of input points.
         //but for JTS, the order of faces returned from vonoroi routine is not the same as the order of input points.
-        //we need to make them same in order to group them into B, roads and wpRoads for further processing        
+        //we need to make them same in order to group them into validRandomPoints, roads and wpRoads for further processing        
         ArrayList<ArrayList<Integer>> sameOrder = new ArrayList<>();
-        for(Point2D p : voro_Points) {
-	        for(ArrayList<Integer> face: c) {
-	        	if(inpolygon(p, face, v)) {
+        for(Point2D p : voronoiPoints) {
+	        for(ArrayList<Integer> face: voronoiDiagramFacets) {
+	        	if(inpolygon(p, face, voronoiDiagramVertices)) {
 	        		sameOrder.add(face);
 	        		break;
 	        	}
 	        }
         }
 		
-        c = sameOrder;
+        voronoiDiagramFacets = sameOrder;
 		
-		int N;
+		int numFacets;		//the number of facets to be processed
 		if(isUrban)
-			N = B.getNumRows();
+			numFacets = validRandomPoints.size();
 		else
-			N = c.size();
+			numFacets = voronoiDiagramFacets.size();
 		
-		HashSet<Integer> ind1 = new HashSet<>();	//indices for those invalid facets crossing over roads
-		HashSet<Integer> ind2 = new HashSet<>();	//indices for those invalid facets near main Roads crossing over smRoads
-		ind = new HashSet<>();
+		HashSet<Integer> invalidFacetsRoads = new HashSet<>();		//indices for those invalid facets crossing over roads
+		HashSet<Integer> invalidFacetsSmRoads = new HashSet<>();	//indices for those invalid facets near main Roads crossing over smRoads
+		validFacetsIndices = new HashSet<>();
 		
 		//close open polygons and discard everything that may be outside the map area
-		for (int i = 0; i<N; i++) {
-			ArrayList<Integer> temp = c.get(i);
+		for (int i = 0; i<numFacets; i++) {
+			ArrayList<Integer> temp = voronoiDiagramFacets.get(i);
 		    if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
-		        c.get(i).add(temp.get(0));  // closing polygons
+		        voronoiDiagramFacets.get(i).add(temp.get(0));  // closing polygons
 		}
 		
-		int numPoints;
+		int numPoints;	//valid points to be processed
 		if(isUrban)
-			numPoints = B.getNumRows()+tempD.size();
+			numPoints = validRandomPoints.size()+uniqueRoads.size();
 		else
-			numPoints = N;
+			numPoints = numFacets;
 		
 		//get all valid facets inside the map area
+		Rectangle2D rect = new Rectangle2D(0, 0, xMargin, yMargin);
 		for(int i = 0; i < numPoints; i++) {
-			if(i>=c.size()) break;
+			if(i>=voronoiDiagramFacets.size()) break;
 			
-			ArrayList<Integer> facet = c.get(i);
+			ArrayList<Integer> facet = voronoiDiagramFacets.get(i);
 			int j;
 			for(j = 0; j < facet.size(); j++)
-		    if ((v.get(facet.get(j),0) >= 0)
-		    	&& (v.get(facet.get(j),0) <= xMargin)
-		    	&& (v.get(facet.get(j),1) >= 0)
-		    	&& (v.get(facet.get(j),1) <= yMargin))
-		    	continue;
-		    else break;
+				if(!rect.contains(voronoiDiagramVertices.get(facet.get(j))))
+					break;
 			
-		    if(j == facet.size()) ind.add(i);
+		    if(j == facet.size()) validFacetsIndices.add(i);
 		}
 		
 		//find those invalid facets crossing over roads
-		for(int i = 0; i < N; i++) {    
+		for(int i = 0; i < numFacets; i++) {    
 			    // checking if one or more sides of buildings intersect roads
 			    for(int k = 0; k < roads.size(); k++) {
-			    	 Polygon2D p = polyxpoly(v, c.get(i), roads.get(k));
+			    	 Polygon2D p = polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i), roads.get(k));
 			    	 //if at least one vector [x1 y1], [x2 y2] is not 'empty' ( [] ) then one or more sides of the building fall into a road
 			    	 if(p != null && !p.isEmpty())
 			    		// and the coordinates of this building are set to NaN so it wont be rendered
-			            ind1.add(i); 
+			            invalidFacetsRoads.add(i); 
 			    }
 		}
-		
+
 		// we check if the buildings located close to the main road (Road) fall into the 
 		// smaller road (smRoad)
-		for(int i = B.getNumRows(); i < B.getNumRows()+tempD.size(); i++) {
-			if(i>=c.size()) break;
+		for(int i = validRandomPoints.size(); i < validRandomPoints.size()+uniqueRoads.size(); i++) {
+			if(i>=voronoiDiagramFacets.size()) break;
 			
-		    if(c.get(i).size() != 0) {
-				ArrayList<Integer> temp = c.get(i);
+		    if(voronoiDiagramFacets.get(i).size() != 0) {
+				ArrayList<Integer> temp = voronoiDiagramFacets.get(i);
 		    	if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
-		        c.get(i).add(temp.get(0));  // closing polygons
+		        voronoiDiagramFacets.get(i).add(temp.get(0));  // closing polygons
 		        
 		        for(int k = 0; k < smRoads.size(); k++) {    
-		            Polygon2D p = polyxpoly(v, c.get(i), smRoads.get(k));
+		            Polygon2D p = polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i), smRoads.get(k));
 		            if(p != null && !p.isEmpty())
-		                ind2.add(i);
+		                invalidFacetsSmRoads.add(i);
 		        }
 		    }	
 		}
 		
-		ind1.addAll(ind2);
+		invalidFacetsRoads.addAll(invalidFacetsSmRoads);
 		
-		ind.removeAll(ind1);
+		validFacetsIndices.removeAll(invalidFacetsRoads);
 		
-		// now all valid buildings are c.get(ind.get(i)) which are a set of indices into v
+		//Now all valid buildings are voronoiDiagramFacets.get(ind.get(validFacetsIndices))
+		//which are a set of indices into voronoiDiagramVertices
 		
 		//calculate the area of each building
 		ArrayList<Double> buildArea = new ArrayList<>();
-		indlist = new ArrayList<>(ind);
-		for(int i = 0; i < indlist.size(); i++) {
-			ArrayList<Integer> polyindex = c.get(indlist.get(i));
+		validFacetsIndexlist = new ArrayList<>(validFacetsIndices);
+		for(int i = 0; i < validFacetsIndexlist.size(); i++) {
+			ArrayList<Integer> polyindex = voronoiDiagramFacets.get(validFacetsIndexlist.get(i));
 			SimplePolygon2D poly = new SimplePolygon2D();
 			for(int j : polyindex)
-				poly.addVertex(new Point2D(v.get(j, 0), v.get(j, 1)));
+				poly.addVertex(voronoiDiagramVertices.get(j));
 			
 			buildArea.add(Math.abs(poly.area()));
 		}
@@ -279,20 +292,20 @@ public class MapGenData {
 		double percent1 = 0.6;
 		double percent2 = 3;
 		ArrayList<Integer> rem = new ArrayList<>();
-		for(int i = 0; i < indlist.size(); i++) {
+		for(int i = 0; i < validFacetsIndexlist.size(); i++) {
 			if((buildArea.get(i) > percent1*areaMax)
 				|| (buildArea.get(i) < percent2*areaMin))
-				rem.add(indlist.get(i));
+				rem.add(validFacetsIndexlist.get(i));
 		}
 		
-		ind.removeAll(rem);
+		validFacetsIndices.removeAll(rem);
 		
 		//we create a database of variable heights 
 		//and we assign a height to each building
 		heights = new ArrayList<>();
 		Random rand = new Random();
-		indlist = new ArrayList<>(ind);
-		for(int i = 0; i < indlist.size(); i++) {
+		validFacetsIndexlist = new ArrayList<>(validFacetsIndices);
+		for(int i = 0; i < validFacetsIndexlist.size(); i++) {
 		        // random height calculation using a normal Gaussian distribution with 
 		        // average value (heightMean) and standard divergence (heightStd) that have been given by the user
 		    
@@ -305,23 +318,22 @@ public class MapGenData {
 		}
 		
 		createBuild();
-		//createBuild2(faces);
-
 	}
 
 	
-	//create all valid facets only
+	//construct builds(facets) and nodes(vertices) to be rendered on screen.
+	//construct topology information for deletion operation and other operation such as undo/redo
 	private void createBuild() {
 		builds.clear();
 	    
 		int removed = 0;
 		
 		//create builds for draw
-	    for(int i=0; i<indlist.size(); i++) {
+	    for(int i=0; i<validFacetsIndexlist.size(); i++) {
 			Polygon p = new Polygon();
-			ArrayList<Integer> pind = c.get(indlist.get(i));
+			ArrayList<Integer> pind = voronoiDiagramFacets.get(validFacetsIndexlist.get(i));
 			for(int j=0; j<pind.size(); j++)
-				p.addPoint((int)v.get(pind.get(j), 0), (int)v.get(pind.get(j), 1));
+				p.addPoint((int)voronoiDiagramVertices.get(pind.get(j)).getX(), (int)voronoiDiagramVertices.get(pind.get(j)).getY());
 			
 			//eliminates triangular and degenerate cases
 			if(p.npoints > 4)	//it is 4 because we repeat the last point with the initial point
@@ -343,17 +355,6 @@ public class MapGenData {
 	    		facetIndices.add(index);
 	    		
 	    		//add into face topology information
-	    		/*
-	    		ArrayList<Node.FaceIndex> fis = nodeset.get(index).adjacentFaces;
-	    		int ii;
-	    		for(ii=0; ii<fis.size(); ii++) {
-	    			Node.FaceIndex fi = fis.get(ii);
-	    			if(fi.face == p)
-	    				break;
-	    		}
-	    		
-	    		if(ii == fis.size())
-	    			*/
 	    		nodeset.get(index).adjacentFaces.add(new Node.FaceIndex(p, i));
 	    		
 	    		//get its prev and next nodes
@@ -376,7 +377,7 @@ public class MapGenData {
 	    	nodeIndices.add(facetIndices);
 	    }
 	    
-	    GraphPanel.nodes = nodeset;
+	    graphPanel.setNodes(nodeset);
 	}
 	
 	private int addNode(ArrayList<Node> nodeset, Node n) {
@@ -389,23 +390,6 @@ public class MapGenData {
 		}
 		
 		return index;
-	}
-	
-	//create all facets, including those invalid facets
-	@SuppressWarnings("unused")
-	private void createBuild2(GeometryCollection polygons) {
-		builds2.clear();
-		
-		int numPolygons = polygons.getNumGeometries();
-
-		for(int i=0; i<numPolygons; i++) {
-			Coordinate[] regionCoordinates = polygons.getGeometryN(i).getCoordinates();
-			Polygon poly = new Polygon();
-			for(int j=0; j<regionCoordinates.length; j++)
-				poly.addPoint((int)regionCoordinates[j].x, (int)regionCoordinates[j].y);
-
-			builds2.add(poly);
-		}
 	}
 	
 	public static final double TOLERANCE = 1.0;
@@ -424,464 +408,54 @@ public class MapGenData {
 		pts.removeAll(tooclose);
 	}
 	
-	public void generateRoads() {
-		roads = new ArrayList<>();
-		wpRoads = new ArrayList<>();
-		smRoads = new ArrayList<>();
-		
-		boolean equalSize = false;
-
-		if (xMargin == yMargin)
-		    equalSize = true;
-		else
-		    equalSize = false;
-		
-		//get a set of random values for roads' centers
-		roadCentre = SimpleMatrix.random(numRoads, 1, 2*roadWidth, xMargin-(2*roadWidth), new Random());
-		//if any 2 roads are too close, we adjust them
-		minDistanceRoad();
-		
-		Random rand = new Random();
-
-	    ArrayList<Point2D> D1 = new ArrayList<>();		//one side of the road
-	    ArrayList<Point2D> D2 = new ArrayList<>();		//anothe side of the road
-	    ArrayList<Point2D> D3 = new ArrayList<>();		//road center line
-	    ArrayList<Point2D> D = new ArrayList<>();		//D1 + D2 + D3
-	    ArrayList<Point2D> road;
-	    ArrayList<Point2D> wpRoad;
-	    ArrayList<Point2D> smRoad;
-	    
-		for(int q = 0; q < numRoads; q++) {    
-			    D1.clear();
-			    D2.clear();
-			    D3.clear();
-			    D.clear();
-			    
-			    //obtain gaussian random road width based on user inputs
-			    double width = Math.round(roadWidth + roadStd * rand.nextGaussian());
-			    
-			    if ( equalSize ) {
-			        for(int i = 0; i < Math.ceil((xMargin + yMargin)/(2*dist)); i++) {
-			            D1.add(new Point2D(i*dist, roadCentre.get(q)-width));
-			            D2.add(new Point2D(i*dist, roadCentre.get(q)+width));
-			            D3.add(new Point2D(i*dist, roadCentre.get(q)));
-			        }
-			        D.addAll(D1);
-			        D.addAll(D.size(), D2);
-			        D.addAll(D.size(), D3);
-			    } else {
-			        for(int i = 0; i < Math.ceil((xMargin + yMargin)/(2*dist)); i++) {
-			            D1.add(new Point2D(i*dist, roadCentre.get(q)-width));
-			            D2.add(new Point2D(i*dist, roadCentre.get(q)+width));
-			            D3.add(new Point2D(i*dist, roadCentre.get(q)));
-			        }
-			        D.addAll(D1);
-			        D.addAll(D.size(), D2);
-			        D.addAll(D.size(), D3);
-			    }
-			    
-			    //Rotate this generated road for some random degree around its center
-			    D = myRotateRoad(D, roadCentre.get(q));
-				
-			    numD = D1.size();
-
-			    //generate roads
-			    road = new ArrayList<Point2D>();
-			    road.addAll(D.subList(0, numD));
-			    for(int i = 2*numD-1; i >= numD; i--)
-			    	road.add(D.get(i));
-			    road.add(D.get(0));
-			    
-			    roads.add(road);
-
-			    //generate wpRoads
-			    wpRoad = new ArrayList<Point2D>();
-			    wpRoad.addAll(D.subList(2*numD, D.size()));
-			    
-			    wpRoads.add(wpRoad);
-			    
-			    //generate smRoads
-			    smRoad = new ArrayList<Point2D>();
-			    for(int i = 0; i < numD; i++)
-			    	smRoad.add(new Point2D((road.get(i).getX() + wpRoad.get(i).getX())/2 + 1,
-			    			(road.get(i).getY() + wpRoad.get(i).getY())/2 + 1));
-			    for(int i = numD; i < 2*numD; i++)
-			    	smRoad.add(new Point2D((road.get(i).getX() + wpRoad.get(2*numD-i-1).getX())/2 + 1,
-			    			(road.get(i).getY() + wpRoad.get(2*numD-i-1).getY())/2 + 1));
-			    smRoad.add(new Point2D((road.get(0).getX() + wpRoad.get(0).getX())/2 + 1,
-		    			(road.get(0).getY() + wpRoad.get(0).getY())/2 + 1));
-			    
-			    smRoads.add(smRoad);
-		}
-
-	}
-	
-	//rotate the road D for some random degree around its center.
-	//To do this:
-	//first translate to its center as origin(0,0)
-	//then rotate random degree,
-	//then translate back to its original location
-	public ArrayList<Point2D> myRotateRoad(ArrayList<Point2D> D, double roadCenter) {
-		double x = D.get(0).getX();
-		double y = D.get(0).getY();
-		double minx = x;
-		double maxx = x;
-		double miny = y;
-		double maxy = y;
-		
-		//get road center
-		for(Point2D p: D) {
-			x = p.getX();
-			y = p.getY();
-			if(x > maxx) maxx = x;
-			else if(x < minx) minx = x;
-			if(y < miny) miny = y;
-			else if(y > maxy) maxy = y;
-		}
-		
-		double cx = (minx + maxx)/2;
-		double cy = (miny + maxy)/2;
-		
-		int[] choice = new int[]{-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90};
-
-		int ind = new Random().nextInt(choice.length);
-		int th = choice[ind];
-
-		double theta=(th*Math.PI)/180.0;
-		
-		ArrayList<Point2D> D1 = new ArrayList<>();
-		
-		for(Point2D p: D) {
-			//p = p.rotate(center, theta);
-			x = p.getX();
-			y = p.getY();
-			x=x-cx;
-			y=y-cy;
-			double x1 = x*Math.cos(theta) - y*Math.sin(theta);
-			double y1 = x*Math.sin(theta) + y*Math.cos(theta);
-
-			x = x1;
-			y = y1;
-			
-			x=x+cx;
-			y=y+cy;
-			
-			D1.add(new Point2D(x,y));
-		}
-		
-		return D1;
-	}
-	
-	//adjust road centers so that no 2 road centers are too close
-	public void minDistanceRoad() {
-		for(int i = 1; i < numRoads; i++) {
-			    boolean change = true;
-			    int times = 0;
-			    while ((change) && (times < 10*numRoads)) {
-			        change = false;
-			        for(int j = 0; j < i-1; j++) {
-			            if  ( Math.abs(roadCentre.get(i,0) - roadCentre.get(j,0)) < (3*roadWidth) ) {
-			                change = true;
-			                double value = SimpleMatrix.random(1, 1, roadWidth, xMargin-roadWidth, new Random()).get(0);
-			                roadCentre.set(i, 0, value);
-			                times = times + 1;
-			            }
-			        }
-			        if (times >= 10*numRoads) {
-			            numRoads = i;
-			        }
-			    }
-		}
-	}
-	
-	public static final String DXF_header_fn = "header.dxf";
-	public static final String facet_header_fn = "1stSet.txt";
-	public static String DXF_header = null;
-	public static String facet_header = null;
-	
-	public void createDXFile(String fname, int choice) {
-		if(GraphPanel.nodes != null)
-			this.createDXFile(fname, choice, builds, heights, xMargin, yMargin);
-		else
-			this.createDXFile(fname, choice, v, c, new ArrayList<>(ind), heights, xMargin, yMargin);
-	}
-	
-	//create dxf from nodes data reflecting user adjusting
-	private void createDXFile(String fname, int choice,
-			ArrayList<Polygon> builds,
-			ArrayList<Double> heights,
-			double xMargin,
-			double yMargin) {
-		
-		try {
-			FileWriter fw = new FileWriter(fname);
-			
-			if(DXF_header == null) DXF_header = readFile(DXF_header_fn);
-			if(facet_header == null) facet_header = readFile(facet_header_fn);
-			
-			fw.write(DXF_header);
-			fw.write("\n");
-			
-			for(int i = 0; i < builds.size(); i++) {
-			    Polygon build = builds.get(i);
-			    
-			    fw.write(facet_header);
-				fw.write("\n");
-				
-				double height = heights.get(i);
-				
-				for(int j = 0; j < build.npoints; j++) {
-					double x = build.xpoints[j];
-					double y = build.ypoints[j];
-			        if ( j != build.npoints-1 ) {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","VERTEX"));
-			        	fw.write(String.format("%3s\n","8"));
-			        } else {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","SEQEND"));
-			        	fw.write(String.format("%3s\n","8"));
-			        	fw.write(String.format("%s\n","POLYLINE"));
-			        	fw.write(String.format("%3s\n","8"));
-			        }
-				}
-			}
-			
-			for(int k = 0; k <= xMargin; k = k + 10)
-			    for(int l = 0; l <= yMargin; l = l + 10) {
-			    	fw.write(String.format("%s\n","INSERT"));
-			    	fw.write(String.format("%3s\n","8"));
-			    	fw.write(String.format("%s\n","DEM_10M_CROSS"));
-			    	fw.write(String.format("%3s\n","2"));
-			    	fw.write(String.format("%s\n","CROSS"));
-			    	fw.write(String.format("%3s\n","10"));
-			    	fw.write(String.format("%.1f\n",(float)k));
-			    	fw.write(String.format("%3s\n","20"));
-			    	fw.write(String.format("%.1f\n",(float)l));
-			    	fw.write(String.format("%3s\n","30"));
-			    	fw.write(String.format("%.1f\n",0.0));
-			    }
-		
-			fw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-	
-	//create dxf from builds data
-	private void createDXFile(String fname, int choice,
-			DenseMatrix64F vertices,
-			ArrayList<ArrayList<Integer>> builds,
-			ArrayList<Integer> ind,
-			ArrayList<Double> heights,
-			double xMargin,
-			double yMargin) {
-		
-		try {
-			FileWriter fw = new FileWriter(fname);
-			
-			if(DXF_header == null) DXF_header = readFile(DXF_header_fn);
-			if(facet_header == null) facet_header = readFile(facet_header_fn);
-			
-			fw.write(DXF_header);
-			fw.write("\n");
-			
-			for(int i = 0; i < ind.size(); i++) {
-			    ArrayList<Integer> build = builds.get(ind.get(i));
-			    
-			    fw.write(facet_header);
-				fw.write("\n");
-				
-				double height = heights.get(i);
-				
-				for(int j = 0; j < build.size(); j++) {
-					double x = vertices.get(build.get(j), 0);
-					double y = vertices.get(build.get(j), 1);
-			        if ( j != build.size()-1 ) {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","VERTEX"));
-			        	fw.write(String.format("%3s\n","8"));
-			        } else {
-			        	fw.write(String.format("%s\n","BUILD1"));
-			        	fw.write(String.format("%3s\n","10"));
-			        	fw.write(String.format("%.1f\n",x));
-			        	fw.write(String.format("%3s\n","20"));
-			        	fw.write(String.format("%.1f\n",y));
-			        	fw.write(String.format("%3s\n","30"));
-			        	fw.write(String.format("%.1f\n",height));
-			        	fw.write(String.format("%3s\n","70"));
-			        	fw.write(String.format("%6s\n","32"));
-			        	fw.write(String.format("%3s\n","0"));
-			        	fw.write(String.format("%s\n","SEQEND"));
-			        	fw.write(String.format("%3s\n","8"));
-			        	fw.write(String.format("%s\n","POLYLINE"));
-			        	fw.write(String.format("%3s\n","8"));
-			        }
-				}
-			}
-			
-			for(int k = 0; k <= xMargin; k = k + 10)
-			    for(int l = 0; l <= yMargin; l = l + 10) {
-			    	fw.write(String.format("%s\n","INSERT"));
-			    	fw.write(String.format("%3s\n","8"));
-			    	fw.write(String.format("%s\n","DEM_10M_CROSS"));
-			    	fw.write(String.format("%3s\n","2"));
-			    	fw.write(String.format("%s\n","CROSS"));
-			    	fw.write(String.format("%3s\n","10"));
-			    	fw.write(String.format("%.1f\n",(float)k));
-			    	fw.write(String.format("%3s\n","20"));
-			    	fw.write(String.format("%.1f\n",(float)l));
-			    	fw.write(String.format("%3s\n","30"));
-			    	fw.write(String.format("%.1f\n",0.0));
-			    }
-		
-			fw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-	
-	public String readFile(String fn) {
-			StringBuilder sb = new StringBuilder();
-			String buf;
-			
-			try {
-				InputStream is=MapGenData.class.getClassLoader().getResourceAsStream("res/"+fn);
-				BufferedReader in = new BufferedReader(new InputStreamReader(is));
-				while((buf= in.readLine()) != null) {
-					sb.append(buf, 0, buf.length());
-					sb.append('\n');
-				}
-				
-				in.close();
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			return sb.toString();
-	}
-	
 	//find intersections between facet and road
-	public Polygon2D polyxpoly(DenseMatrix64F vertices,
+	private Polygon2D polyxpoly(ArrayList<Point2D> vertices,
 			ArrayList<Integer> facet, ArrayList<Point2D> road) {
 		SimplePolygon2D p1 = new SimplePolygon2D();
 		SimplePolygon2D p2 = new SimplePolygon2D();
-		Polygon2D res = new MultiPolygon2D();
 		
-		for(int i: facet)
-			p1.addVertex(new Point2D(vertices.get(i, 0), vertices.get(i, 1)));
+		for(int index : facet)
+			p1.addVertex(vertices.get(index));
 		
-		for(int i=0; i<road.size(); i++)
-			p2.addVertex(new Point2D(road.get(i).getX(), road.get(i).getY()));
+		for(Point2D p : road)
+			p2.addVertex(p);
 		
-		res = Polygons2D.intersection(p1, p2);
-		
-		return res;
+		return Polygons2D.intersection(p1, p2);
 	}
-	
-	//matlab cell2mat
-	public DenseMatrix64F cell2mat(ArrayList<ArrayList<Point2D>> cell) {
-		if(cell == null || cell.size() == 0) return null;
+
+	private boolean inpolygon(Point2D p, ArrayList<Integer> face, ArrayList<Point2D> voronoiDiagramVertices) {
+		//we cannot use javaGeom polygon contains method because it buggy cannot handle degenerated line2D.
+		//Since there is no Polygon2D in current Java2D implementation, we have to use either Polygon or Path2D.Double to handle
+		//double precision values. We have to be precise here because the result are from voronoi call,
+		//but we can use Polygon for screen rendering.
+		Path2D poly = new Path2D.Double();
+		poly.moveTo(voronoiDiagramVertices.get(0).getX(), voronoiDiagramVertices.get(0).getY());
+		for(int i = 1; i < face.size(); i++)
+			poly.lineTo(voronoiDiagramVertices.get(face.get(i)).getX(), voronoiDiagramVertices.get(face.get(i)).getY());
+		poly.closePath();
 		
-		int total = 0;
-		for(int i=0; i< cell.size(); i++)
-			total += cell.get(i).size();
-		
-		int k = 0;
-		DenseMatrix64F res = new SimpleMatrix(total, 2).getMatrix();
-		for(int i=0; i< cell.size(); i++) {
-			ArrayList<Point2D> poly = cell.get(i);
-			for(int j=0; j< poly.size(); j++) {
-				res.set(k, 0, poly.get(j).getX());
-				res.set(k, 1, poly.get(j).getY());
-				k++;
-			}
-		}
-		
-		return res;
-	}
-	
-	//find all points fall inside of roads and discard them, return the rest points
-	public DenseMatrix64F find(DenseMatrix64F b1, ArrayList<ArrayList<Point2D>> roads) {
-		ArrayList<Point2D> pnts = new ArrayList<>();
-		
-		for(int i = 0; i < b1.getNumRows(); i++) {
-			double x = b1.get(i,0);
-			double y = b1.get(i,1);
-			int j;
-			for(j = 0; j < roads.size(); j++) {
-				if(inpolygon(x, y, roads.get(j)))
-					break;
-			}
-			
-			if(j == roads.size())
-				pnts.add(new Point2D((float)x,(float)y));
-		}
-		
-		DenseMatrix64F res = new DenseMatrix64F(pnts.size(), 2);
-		for (int i = 0; i < pnts.size(); i++) {
-			res.set(i, 0, pnts.get(i).getX());
-			res.set(i, 1, pnts.get(i).getY());
-		}
-		
-		return res;
-	}
-	
-	public static final int initialSize = 65535;
-	
-	//if (x,y) is inside of polygon
-	public boolean inpolygon(double x, double y, ArrayList<Point2D> polygon) {
-		Polygon poly = new Polygon();
-		for(Point2D p: polygon)
-			poly.addPoint((int)p.getX(), (int)p.getY());
-		
-		return poly.contains(x, y);
-	}
-	
-	public boolean inpolygon(Point2D p, ArrayList<Integer> polygon, DenseMatrix64F vertices) {
-		Polygon poly = new Polygon();
-		for(int i : polygon)
-			poly.addPoint((int)vertices.get(i, 0), (int)vertices.get(i, 1));
-    	
 		return poly.contains(p.getX(), p.getY());
 	}
 	
-	public ArrayList<Coordinate> toCoords(ArrayList<Point2D> pts) {
+	//find all points fall inside of roads and discard them, return the rest points
+	private ArrayList<Point2D> getValidRandomPoints(ArrayList<Point2D> randomPoints, ArrayList<ArrayList<Point2D>> roads) {
+		HashSet<Point2D> invalid = new HashSet<>();
+		
+		for(Point2D p : randomPoints)
+			for(ArrayList<Point2D> road : roads) {
+				SimplePolygon2D poly = new SimplePolygon2D(road);
+				if(poly.contains(p)) {
+					invalid.add(p);
+					break;
+				}
+			}
+		
+		randomPoints.removeAll(invalid);
+		
+		return randomPoints;
+	}
+	
+	private ArrayList<Coordinate> toCoords(ArrayList<Point2D> pts) {
 		ArrayList<Coordinate> coords = new ArrayList<>();
 		for(int i=0; i<pts.size(); i++)
 			coords.add(new Coordinate(pts.get(i).getX(), pts.get(i).getY()));
@@ -889,8 +463,19 @@ public class MapGenData {
 		return coords;
 	}
 	
-	//get v and c from result of JTS voronoi routine
-	private DenseMatrix64F getVC(GeometryCollection polygons) {
+	//get voronoiDiagramVertices and voronoiDiagramFacets from result of JTS voronoi routine call
+	private void getVoronoiDiagram(ArrayList<Point2D> voronoiPoints) {
+        //call vonoroi routine using JTS library
+        //Note: depending on vonoroi implementation, some (such as matlab) can accept duplicate points and negative values.
+        //some (such as matlab) can output voronoiDiagramVertices and voronoiDiagramFacets directly
+		VoronoiDiagramBuilder vb = new VoronoiDiagramBuilder();
+		vb.setTolerance(2.0);		//snapping factor to improve algorithm robustness
+		vb.setSites(toCoords(voronoiPoints));
+		GeometryCollection polygons = (GeometryCollection) vb.getDiagram(new GeometryFactory());
+
+		//JTS vonoroi routine does not return voronoiDiagramVertices and voronoiDiagramFacets directly, so we have to get them manually
+		voronoiDiagramFacets.clear();
+        
 		int numPolygons = polygons.getNumGeometries();
 		
 		ArrayList<Point2D> totalp = new ArrayList<>();
@@ -908,27 +493,12 @@ public class MapGenData {
 				}
 			}
 			
-			c.add(facet);
+			voronoiDiagramFacets.add(facet);
 		}
 		
-		return toMatrix(totalp);
+		voronoiDiagramVertices = totalp;
 	}
 	
-	//find duplicate points
-	private int exist(ArrayList<Point2D> pts, Point2D coord) {
-		for(int i=0; i<pts.size(); i++) {
-			double x = coord.getX();
-			double y = coord.getY();
-			if((x == pts.get(i).getX()) && (y == pts.get(i).getY())) {
-					return i;
-			}
-			else continue;
-		}
-		
-		return -1;
-	}
-	
-	//find duplicate points
 	private int exist(ArrayList<Point2D> pts, Coordinate coord) {
 		for(int i=0; i<pts.size(); i++) {
 			double x = coord.x;
@@ -941,29 +511,18 @@ public class MapGenData {
 		return -1;
 	}
 	
-	private DenseMatrix64F toMatrix(ArrayList<Point2D> pts) {
-		DenseMatrix64F res = new DenseMatrix64F(pts.size(), 2);
-		
-		for(int i=0; i<pts.size(); i++) {
-			res.set(i, 0, pts.get(i).getX());
-			res.set(i, 1, pts.get(i).getY());
-		}
-		
-		return res;
-	}
-	
 	//for testing
 	public void readCsv(String fn) {
 		try {
 			String line = null;
-			MapGenData.builds.clear();
+			builds.clear();
 			Polygon poly = new Polygon();
 			
 			BufferedReader r = new BufferedReader(new FileReader(fn));
 			while((line = r.readLine()) != null) {
 				String[] result = line.split("[,\\s]");
 				if(result.length == 1) {
-					MapGenData.builds.add(poly);
+					builds.add(poly);
 					poly = new Polygon();
 				} else
 					poly.addPoint((int)Float.parseFloat(result[0]), (int)Float.parseFloat(result[1]));
@@ -976,5 +535,18 @@ public class MapGenData {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+	}
+	
+	public boolean getIsUrban() {
+		return isUrban;
+	}
+	
+	public void setIsUrban(boolean isUrban) {
+		this.isUrban = isUrban;
+	}
+	
+	public void createDXFile(String fname, int choice) {
+		if(builds != null)
+			dxf.createDXFile(fname, choice, builds, heights, xMargin, yMargin);
 	}
 }

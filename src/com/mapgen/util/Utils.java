@@ -5,58 +5,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
+import math.geom2d.Point2D;
+
 public class Utils {
     
-    public static ArrayList<Point> generateRandomPoints(int size, Range range) {
+    public static ArrayList<Point2D> generateRandomPoints(int size, Range range) {
         Random random = new Random();
-        ArrayList<Point> points = new ArrayList<Point>(size);
+        HashSet<Point2D> points = new HashSet<Point2D>();
         double x = range.getMinX();
         double y = range.getMinY();
         double width = range.getWidth();
         double height = range.getHeight();
-        for (int i = 0; i < size; i++) {
-            points.add(new Point(Math.floor(random.nextFloat()*width + x),
+        while (points.size() < size)
+            points.add(new Point2D(Math.floor(random.nextFloat()*width + x),
                                  Math.floor(random.nextFloat()*height + y)));
-        }
-        
-        HashSet<Point> uniquePoints = new HashSet<Point>();
-        for(int i = 0; i < points.size(); i++){
-        	uniquePoints.add(points.get(i));
-        }
-        System.out.println("ArrayList size: " + points.size());
-        System.out.println("Set size: " + uniquePoints.size());
-        
-        points.removeAll(points);
-        for (Point p : uniquePoints) {
-        	points.add(p);
-        }
-        
-        return points;
+
+        return new ArrayList<Point2D>(points);
     }
-    
-    /*public static ArrayList<Point> generateRandomPoints(int size, long randomSeed, Range range) {
-        Random random = new Random(randomSeed);
-        ArrayList<Point> points = new ArrayList<Point>(size);
-        double x = range.getMinX();
-        double y = range.getMinY();
-        double width = range.getWidth();
-        double height = range.getHeight();
-        for (int i = 0; i < size; i++) {
-            points.add(new Point(Math.floor(random.nextFloat()*10width + x),
-                                 Math.floor(random.nextFloat()*10height + y)));
-        }
-        HashSet<Point> uniquePoints = new HashSet<Point>();
-        for(int i = 0; i < points.size(); i++){
-        	uniquePoints.add(points.get(i));
-        }
-        System.out.println("ArrayList size: " + points.size());
-        System.out.println("Set size: " + uniquePoints.size());
-        
-        points.removeAll(points);
-        System.out.println("ArrayList size: " + points.size());
-        
-        return points;
-    }*/
     
     public static ArrayList<Point> testPoints5() {
         ArrayList<Point> points = new ArrayList<Point>(5);

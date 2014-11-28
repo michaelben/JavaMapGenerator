@@ -18,8 +18,8 @@ import javax.swing.JToggleButton;
 public class ScrollGraphPanel extends JPanel implements ItemListener {
 	private Rule columnView;
 	private Rule rowView;
-	JToggleButton isMetric;
-	GraphPanel graphPanel;
+	private JToggleButton isMetric;
+	private GraphPanel graphPanel;
 
 	public ScrollGraphPanel() {
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -33,10 +33,10 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 
 		// Create the corners.
 		JPanel buttonCorner = new JPanel(); // use FlowLayout
-		isMetric = new JToggleButton("tm", false);
+		isMetric = new JToggleButton("rm", true);
 		isMetric.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		isMetric.setMargin(new Insets(2, 2, 2, 2));
-		isMetric.addItemListener(this);
+		//isMetric.addItemListener(this);
 		buttonCorner.add(isMetric);
 
 		// Set up the scroll pane.
@@ -71,16 +71,15 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 		graphPanel.setPreferredSize(new Dimension(Param.getMapWidth(), Param.getMapHeight()));
 		columnView.setPreferredWidth(Param.getMapWidth());
 		rowView.setPreferredHeight(Param.getMapHeight());
-		graphPanel.polygonPick = null;
+		graphPanel.setPolygonPick(null);
 	}
 	
 	public void itemStateChanged(ItemEvent e) {
-		GraphPanel.isFill = e.getStateChange() == ItemEvent.SELECTED;
-		
-		MapGen.filledToggleButton.setSelected(GraphPanel.isFill);
-		graphPanel.setMaxUnitIncrement(rowView.getIncrement());
-		
-		graphPanel.repaint();
+		graphPanel.setIsFilled(e.getStateChange() == ItemEvent.SELECTED);
+
+        graphPanel.setMaxUnitIncrement(rowView.getIncrement());
+
+        graphPanel.repaint();
 	}
 
 	/** Returns an ImageIcon, or null if the path was invalid. */
@@ -92,5 +91,9 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 			System.err.println("Couldn't find file: " + path);
 			return null;
 		}
+	}
+	
+	public GraphPanel getGraphPanel() {
+		return this.graphPanel;
 	}
 }
