@@ -228,4 +228,24 @@ public class RoadFactory {
 	public void setNumRoads(int numRoads) {
 		this.numRoads = numRoads;
 	}
+	
+	public void setRoadWidth(double roadWidth) {
+		this.roadWidth = roadWidth;
+	}
+	
+	public void setRoadStd(double roadStd) {
+		this.roadStd = roadStd;
+	}
+	
+	public void setXMargin(double xMargin) {
+		this.xMargin = xMargin;
+	}
+	
+	public void setYMargin(double yMargin) {
+		this.yMargin = yMargin;
+	}
+	
+	public void setDist(double dist) {
+		this.dist = dist;
+	}
 }

@@ -131,7 +131,14 @@ public class MapGenData {
 
 		//generated random roads into roads, wpRoads and smRoads
 		roadFactory.setNumRoads(numRoads);
+		roadFactory.setRoadWidth(roadWidth);
+		roadFactory.setRoadStd(roadStd);
+		roadFactory.setXMargin(xMargin);
+		roadFactory.setYMargin(yMargin);
+		roadFactory.setDist(dist);
+		
 		roadFactory.generateRoads();
+		
 		roads = roadFactory.getRoads();
 		wpRoads = roadFactory.getWpRoads();
 		smRoads = roadFactory.getSmRoads();
