@@ -51,14 +51,22 @@ public class Rule extends JComponent {
         return increment;
     }
 
+    public void setHeight(int ph) {
+    	setSize(new Dimension(SIZE, ph));
+    }
+    
     public void setPreferredHeight(int ph) {
         setPreferredSize(new Dimension(SIZE, ph));
+    }
+
+    public void setWidth(int pw) {
+    	setSize(new Dimension(pw, SIZE));
     }
 
     public void setPreferredWidth(int pw) {
         setPreferredSize(new Dimension(pw, SIZE));
     }
-
+    
     protected void paintComponent(Graphics g) {
         Rectangle drawHere = g.getClipBounds();
 
