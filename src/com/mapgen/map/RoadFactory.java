@@ -47,7 +47,7 @@ public class RoadFactory {
 		roadCentre = new ArrayList<Double>();
 		Random rand = new Random();
 		for(int i = 0; i < numRoads; i++) {
-			double value = rand.nextDouble() * (xMargin - 2*roadWidth) + 2*roadWidth;
+			double value = rand.nextDouble() * (yMargin - 2*roadWidth) + 2*roadWidth;
 			roadCentre.add(value);
 		}
 		

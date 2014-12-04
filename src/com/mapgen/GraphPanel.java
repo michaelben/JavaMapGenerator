@@ -70,7 +70,7 @@ public class GraphPanel extends JPanel implements Scrollable {
                 double bestdist = Double.MAX_VALUE;
 
                 int x = e.getX();
-                int y = e.getY();
+                int y = transform(e.getY());
                 for (int i = 0; i < nodes.size(); i++) {
                     Node n = nodes.get(i);
                     double dist = (n.x - x) * (n.x - x) + (n.y - y) * (n.y - y);
@@ -94,7 +94,7 @@ public class GraphPanel extends JPanel implements Scrollable {
                 	
                 	int i;
             		for(i=0; i<builds.size(); i++)
-            			if(builds.get(i).contains(e.getX(), e.getY())) {
+            			if(builds.get(i).contains(x, y)) {
             				polygonPick = builds.get(i);
             				break;
             			}
@@ -115,7 +115,7 @@ public class GraphPanel extends JPanel implements Scrollable {
                 if(pick != null) {
 	                pick.fixed = pickfixed;
 	                pick.x = e.getX();
-	                pick.y = e.getY();
+	                pick.y = transform(e.getY());
 	                if (numMouseButtonsDown == 0) {
 	                    pick = null;
 	                }
@@ -138,7 +138,7 @@ public class GraphPanel extends JPanel implements Scrollable {
             public void mouseDragged(MouseEvent e) {
             	if(pick != null) {
 	                pick.x = e.getX();
-	                pick.y = e.getY();
+	                pick.y = transform(e.getY());
 	                repaint();
             	}
                 e.consume();
@@ -177,6 +177,10 @@ public class GraphPanel extends JPanel implements Scrollable {
         });
     }
     
+    private int transform(int x) {
+    	return Param.getMapHeight() - x;
+    }
+    
     @Override
     public void paintComponent(Graphics g) {
     	Graphics2D g2 = (Graphics2D)g;
@@ -192,12 +196,11 @@ public class GraphPanel extends JPanel implements Scrollable {
             }
             offgraphics = offscreen.getGraphics();
             offgraphics.setFont(getFont());
+            
+            //set origin to lower-left corner
+            ((Graphics2D)offgraphics).translate(0, Param.getMapHeight());
+            ((Graphics2D)offgraphics).scale(1, -1);
         }
-
-        /*
-        ((Graphics2D)offgraphics).translate(0, d.height);
-        ((Graphics2D)offgraphics).scale(1, -1);
-		*/
         
         offgraphics.setColor(getBackground());
         offgraphics.fillRect(0, 0, d.width, d.height);
