@@ -248,4 +248,13 @@ public class RoadFactory {
 	public void setDist(double dist) {
 		this.dist = dist;
 	}
+	
+	public void setParam(double roadWidth, double roadStd, int numRoads, double xMargin, double yMargin, double dist) {
+		this.roadWidth = roadWidth;
+		this.roadStd = roadStd;
+		this.numRoads = numRoads;
+		this.xMargin = xMargin;
+		this.yMargin = yMargin;
+		this.dist = dist;
+	}
 }

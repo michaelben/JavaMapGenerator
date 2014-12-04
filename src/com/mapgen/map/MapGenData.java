@@ -130,15 +130,8 @@ public class MapGenData {
 		numRoads = (int)(Math.floor((xMargin + yMargin)/200) * densityFactor/50);
 
 		//generated random roads into roads, wpRoads and smRoads
-		roadFactory.setNumRoads(numRoads);
-		roadFactory.setRoadWidth(roadWidth);
-		roadFactory.setRoadStd(roadStd);
-		roadFactory.setXMargin(xMargin);
-		roadFactory.setYMargin(yMargin);
-		roadFactory.setDist(dist);
-		
-		roadFactory.generateRoads();
-		
+		roadFactory.setParam(roadWidth, roadStd, numRoads, xMargin, yMargin, dist);		
+		roadFactory.generateRoads();		
 		roads = roadFactory.getRoads();
 		wpRoads = roadFactory.getWpRoads();
 		smRoads = roadFactory.getSmRoads();
