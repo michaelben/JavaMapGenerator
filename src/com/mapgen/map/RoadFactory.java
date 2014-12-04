@@ -46,8 +46,10 @@ public class RoadFactory {
 		//get a set of random values for roads' centers
 		roadCentre = new ArrayList<Double>();
 		Random rand = new Random();
+		double min = 2*roadWidth;
+		double max = Math.max(xMargin, yMargin) - 2*roadWidth;
 		for(int i = 0; i < numRoads; i++) {
-			double value = rand.nextDouble() * (yMargin - 2*roadWidth) + 2*roadWidth;
+			double value = rand.nextDouble() * (max - min) + min;
 			roadCentre.add(value);
 		}
 		
@@ -72,7 +74,8 @@ public class RoadFactory {
 			    double width = Math.round(roadWidth + roadStd * rand.nextGaussian());
 			    
 			    if ( equalSize ) {
-			        for(int i = 0; i < Math.ceil((xMargin + yMargin)/(2*dist)); i++) {
+			    	double nump = Math.ceil(xMargin/dist);
+			    	for(int i = 0; i < nump; i++) {
 			            lowerSide.add(new Point2D(i*dist, roadCentre.get(q)-width));
 			            upperSide.add(new Point2D(i*dist, roadCentre.get(q)+width));
 			            centerLine.add(new Point2D(i*dist, roadCentre.get(q)));
@@ -82,7 +85,8 @@ public class RoadFactory {
 			        allSides.addAll(allSides.size(), centerLine);
 			    } else {
 			    	//we can do something different here
-			        for(int i = 0; i < Math.ceil((xMargin + yMargin)/(2*dist)); i++) {
+			    	double nump = Math.ceil(Math.max(xMargin, yMargin)/dist);
+			        for(int i = 0; i < nump; i++) {
 			            lowerSide.add(new Point2D(i*dist, roadCentre.get(q)-width));
 			            upperSide.add(new Point2D(i*dist, roadCentre.get(q)+width));
 			            centerLine.add(new Point2D(i*dist, roadCentre.get(q)));

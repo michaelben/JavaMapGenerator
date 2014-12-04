@@ -176,9 +176,9 @@ public class MapGenData {
         		invalid.add(p);
         }
         
-        //we comment out the following 2 lines because JTS voronoi routine can accept duplicate points and negative values
-        //voronoiPoints.removeAll(invalid);
-		//removeTooClose(voronoiPoints);
+        //we can comment out the following 2 lines because JTS voronoi routine can accept duplicate points and negative values
+        voronoiPoints.removeAll(invalid);
+		removeTooClose(voronoiPoints);
         
         getVoronoiDiagram(voronoiPoints);
 
@@ -394,7 +394,6 @@ public class MapGenData {
 	
 	public static final double TOLERANCE = 1.0;
 	
-	@SuppressWarnings("unused")
 	private void removeTooClose(ArrayList<Point2D> pts) {
 		ArrayList<Point2D> tooclose = new ArrayList<Point2D>();
 		
