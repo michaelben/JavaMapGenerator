@@ -12,7 +12,6 @@ import java.util.Iterator;
 import java.util.Random;
 
 import math.geom2d.Point2D;
-import math.geom2d.polygon.Polygon2D;
 import math.geom2d.polygon.Polygons2D;
 import math.geom2d.polygon.Rectangle2D;
 import math.geom2d.polygon.SimplePolygon2D;
@@ -21,6 +20,7 @@ import com.mapgen.GraphPanel;
 import com.mapgen.MapGen;
 import com.mapgen.Node;
 import com.mapgen.Param;
+import com.mapgen.Polygon2D;
 import com.mapgen.util.Range;
 import com.mapgen.util.Utils;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -85,7 +85,7 @@ public class MapGenData {
 	private ArrayList<ArrayList<Integer>> nodeIndices;
 	
 	//valid builds to be generated
-	private ArrayList<Polygon> builds;
+	private ArrayList<Polygon2D> builds;
 	
 	private MapGen mapgen;
 	private GraphPanel graphPanel;
@@ -243,7 +243,7 @@ public class MapGenData {
 			    // checking if this building intersects one of roads
 			    for(Road road : roads) {
 			    	 //optimization using road bound instead of all points belong to the road
-			    	 Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
+			    	 math.geom2d.polygon.Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
 			    	 if(p != null && !p.isEmpty()) {
 			            invalidFacetsRoads.add(i);
 			            break;
@@ -265,7 +265,7 @@ public class MapGenData {
 		    	
 		        for(Road road : smRoads) {
 		        	//optimization using road bound instead of all points belong to the road
-		            Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
+		        	math.geom2d.polygon.Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
 		            if(p != null && !p.isEmpty()) {
 		                invalidFacetsSmRoads.add(i);
 		                break;
@@ -376,11 +376,13 @@ public class MapGenData {
 		
 		//create builds for draw
 	    for(int i=0; i<validFacetsIndexlist.size(); i++) {
-			Polygon p = new Polygon();
+	    	ArrayList<Node> nodes = new ArrayList<>();
+
 			ArrayList<Integer> pind = voronoiDiagramFacets.get(validFacetsIndexlist.get(i));
 			for(int j=0; j<pind.size(); j++)
-				p.addPoint((int)voronoiDiagramVertices.get(pind.get(j)).getX(), (int)voronoiDiagramVertices.get(pind.get(j)).getY());
+				nodes.add(new Node(voronoiDiagramVertices.get(pind.get(j)).getX(), voronoiDiagramVertices.get(pind.get(j)).getY()));
 			
+			Polygon2D p = new Polygon2D(nodes);
 			//we can comment out the following code because we already did this right after voronoi routine call.
 			//Eliminates triangular and degenerate cases
 			if(p.npoints > 4)	//it is 4 because we repeat the last point with the initial point
@@ -393,10 +395,10 @@ public class MapGenData {
 	    //generate unique valid points only, and topology information and their indices for drawing
 	    ArrayList<Node> nodeset = new ArrayList<>();
 	    nodeIndices = new ArrayList<>();
-	    for(Polygon p : builds) {
+	    for(Polygon2D p : builds) {
 	    	ArrayList<Integer> facetIndices = new ArrayList<>();
 	    	for(int i=0; i<p.npoints; i++) {
-	    		Node n = new Node(p.xpoints[i], p.ypoints[i]);
+	    		Node n = p.nodes.get(i);
 	    		int index = addNode(nodeset, n);
 	    		
 	    		facetIndices.add(index);
@@ -428,10 +430,8 @@ public class MapGenData {
 	}
 	
 	private int addNode(ArrayList<Node> nodeset, Node n) {
-		int index;
-		if(nodeset.contains(n))
-			index = nodeset.indexOf(n);
-		else {
+		int index = nodeset.indexOf(n);
+		if(index == -1) {
 			nodeset.add(n);
 			index = nodeset.size() - 1;
 		}
@@ -457,7 +457,7 @@ public class MapGenData {
 	
 	//find intersections between facet and road
 	@SuppressWarnings("unused")
-	private Polygon2D polyxpoly(ArrayList<Point2D> vertices,
+	private math.geom2d.polygon.Polygon2D polyxpoly(ArrayList<Point2D> vertices,
 			ArrayList<Integer> facet, ArrayList<Point2D> road) {
 		SimplePolygon2D p1 = new SimplePolygon2D();
 		SimplePolygon2D p2 = new SimplePolygon2D();
@@ -588,14 +588,14 @@ public class MapGenData {
 		try {
 			String line = null;
 			builds.clear();
-			Polygon poly = new Polygon();
+			Polygon2D poly = new Polygon2D();
 			
 			BufferedReader r = new BufferedReader(new FileReader(fn));
 			while((line = r.readLine()) != null) {
 				String[] result = line.split("[,\\s]");
 				if(result.length == 1) {
 					builds.add(poly);
-					poly = new Polygon();
+					poly = new Polygon2D();
 				} else
 					poly.addPoint((int)Float.parseFloat(result[0]), (int)Float.parseFloat(result[1]));
 			}

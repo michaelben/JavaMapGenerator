@@ -1,6 +1,5 @@
 package com.mapgen.map;
 
-import java.awt.Polygon;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -9,6 +8,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Locale;
+
+import com.mapgen.Polygon2D;
 
 public class DXF {
 	public static final String DXF_header_fn = "header.dxf";
@@ -22,7 +23,7 @@ public class DXF {
 	
 	//create dxf from nodes data reflecting user adjusting
 	void createDXFile(String fname, int choice,
-			ArrayList<Polygon> builds,
+			ArrayList<Polygon2D> builds,
 			ArrayList<Double> heights,
 			double xMargin,
 			double yMargin) {
@@ -37,7 +38,7 @@ public class DXF {
 			fw.write("\n");
 			
 			for(int i = 0; i < builds.size(); i++) {
-			    Polygon build = builds.get(i);
+			    Polygon2D build = builds.get(i);
 			    
 			    fw.write(facet_header);
 				fw.write("\n");
@@ -45,8 +46,8 @@ public class DXF {
 				double height = heights.get(i);
 				
 				for(int j = 0; j < build.npoints; j++) {
-					double x = build.xpoints[j];
-					double y = build.ypoints[j];
+					double x = build.nodes.get(j).getX();
+					double y = build.nodes.get(j).getY();
 			        if ( j != build.npoints-1 ) {
 			        	//use US locale to produce decimal point as dot, rather than comma when running locally in Greence.
 			        	//this prevents corruption if loaded the generated dxf file into DBConverter program.

@@ -1,6 +1,5 @@
 package com.mapgen;
 
-import java.awt.Polygon;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -65,10 +64,10 @@ public class Node {
     
     //the following are topology information used for deletion operation and other possible operations such undo/redo
     public static class FaceIndex {
-    	public Polygon face;
+    	public Polygon2D face;
     	public int vertexInd;
     	
-    	public FaceIndex(Polygon face, int vertexInd) {
+    	public FaceIndex(Polygon2D face, int vertexInd) {
     		this.face = face;
     		this.vertexInd = vertexInd;
     	}

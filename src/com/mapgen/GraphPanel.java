@@ -35,7 +35,7 @@ public class GraphPanel extends JPanel implements Scrollable {
 	private boolean isFill = true;
 	private ArrayList<Node> nodes = new ArrayList<>();
     //private ArrayList<Edge> edges;
-	private ArrayList<Polygon> builds = new ArrayList<>();		//valid builds
+	private ArrayList<Polygon2D> builds = new ArrayList<>();		//valid builds
     
     private Node pick;
     private Polygon polygonPick;
@@ -217,10 +217,12 @@ public class GraphPanel extends JPanel implements Scrollable {
         	//update builds info when dragging
         	if(pick != null)
 	        	for(Node.FaceIndex faceind : pick.adjacentFaces) {
-	        		Polygon face = faceind.face;
+	        		Polygon2D face = faceind.face;
 	        		int index = faceind.vertexInd;
 	        		face.xpoints[index] = (int)pick.x;
 	        		face.ypoints[index] = (int)pick.y;
+	        		face.nodes.get(index).x = pick.x;
+	        		face.nodes.get(index).y = pick.y;
 	        	}
 
 	        for(Polygon p: builds) {
@@ -395,11 +397,11 @@ public class GraphPanel extends JPanel implements Scrollable {
     	this.polygonPick = p;
     }
     
-    public ArrayList<Polygon> getBuilds() {
+    public ArrayList<Polygon2D> getBuilds() {
     	return this.builds;
     }
     
-    public void setBuilds(ArrayList<Polygon> builds) {
+    public void setBuilds(ArrayList<Polygon2D> builds) {
     	this.builds = builds;
     }
     
