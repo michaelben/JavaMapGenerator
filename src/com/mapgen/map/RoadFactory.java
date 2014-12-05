@@ -16,9 +16,9 @@ public class RoadFactory {
 	private double yMargin;
 	private double dist;
 
-	private ArrayList<ArrayList<Point2D>> roads;		//roads
-	private ArrayList<ArrayList<Point2D>> wpRoads;	//roads center line
-	private ArrayList<ArrayList<Point2D>> smRoads;	//small roads between roads and roads center line
+	private ArrayList<Road> roads;		//roads
+	private ArrayList<Road> wpRoads;	//roads center line
+	private ArrayList<Road> smRoads;	//small roads between roads and roads center line
 	
 	public RoadFactory(double roadWidth, double roadStd, int numRoads, double xMargin, double yMargin, double dist) {
 		this.roadWidth = roadWidth;
@@ -108,13 +108,18 @@ public class RoadFactory {
 			    	road.add(allSides.get(i));
 			    road.add(allSides.get(0));
 			    
-			    roads.add(road);
+			    Point2D[] bound = new Point2D[4];
+			    bound[0] = road.get(0);
+			    bound[1] = road.get(numPoints - 1);
+			    bound[2] = road.get(numPoints);
+			    bound[3] = road.get(2*numPoints - 1);
+			    roads.add(new Road(road, bound));
 
 			    //generate wpRoads
 			    wpRoad = new ArrayList<Point2D>();
 			    wpRoad.addAll(allSides.subList(2*numPoints, allSides.size()));
 			    
-			    wpRoads.add(wpRoad);
+			    wpRoads.add(new Road(wpRoad, null));
 			    
 			    //generate smRoads
 			    smRoad = new ArrayList<Point2D>();
@@ -127,7 +132,12 @@ public class RoadFactory {
 			    smRoad.add(new Point2D((road.get(0).getX() + wpRoad.get(0).getX())/2 + 1,
 		    			(road.get(0).getY() + wpRoad.get(0).getY())/2 + 1));
 			    
-			    smRoads.add(smRoad);
+			    bound = new Point2D[4];
+			    bound[0] = smRoad.get(0);
+			    bound[1] = smRoad.get(numPoints - 1);
+			    bound[2] = smRoad.get(numPoints);
+			    bound[3] = smRoad.get(2*numPoints - 1);
+			    smRoads.add(new Road(smRoad, bound));
 		}
 
 	}
@@ -217,15 +227,15 @@ public class RoadFactory {
 		}
 	}
 	
-	public ArrayList<ArrayList<Point2D>> getRoads() {
+	public ArrayList<Road> getRoads() {
 		return roads;
 	}
 	
-	public ArrayList<ArrayList<Point2D>> getWpRoads() {
+	public ArrayList<Road> getWpRoads() {
 		return wpRoads;
 	}
 	
-	public ArrayList<ArrayList<Point2D>> getSmRoads() {
+	public ArrayList<Road> getSmRoads() {
 		return smRoads;
 	}
 	

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Random;
 
 import math.geom2d.Point2D;
@@ -48,9 +49,9 @@ public class MapGenData {
 	
 	private int numRoads;			//number of roads to be generated
 	private RoadFactory roadFactory;
-	private ArrayList<ArrayList<Point2D>> roads;		//roads to be generated
-	private ArrayList<ArrayList<Point2D>> wpRoads;		//roads center line
-	private ArrayList<ArrayList<Point2D>> smRoads;		//small roads between roads and roads center line
+	private ArrayList<Road> roads;			//roads to be generated
+	private ArrayList<Road> wpRoads;		//roads center line
+	private ArrayList<Road> smRoads;		//small roads between roads and roads center line
 	
 	private ArrayList<Point2D> uniqueRoads;				//unique set of points for roads
 	private ArrayList<Point2D> uniqueWpRoads;			//unique set of points for wpRoads
@@ -125,6 +126,8 @@ public class MapGenData {
 	public void generateMap() {
 		initParam();
 
+		//long old = new Date().getTime();
+		
 		//number of roads to be generated
 		numRoads = (int)(Math.floor((xMargin + yMargin)/200) * densityFactor/50);
 
@@ -141,21 +144,25 @@ public class MapGenData {
 
 		//get all unique points from roads
 		HashSet<Point2D> pset = new HashSet<>();
-		for(ArrayList<Point2D> ps : roads)
-			for(Point2D p: ps)
+		for(Road road : roads) {
+			ArrayList<Point2D> pts = road.pts;
+			for(Point2D p: pts)
 				pset.add(p);
+		}
 		uniqueRoads = new ArrayList<>(pset);
 	    
 		//get all unique points from wpRoads
 		pset.clear();
-		for(ArrayList<Point2D> ps : wpRoads)
-			for(Point2D p: ps)
+		for(Road road : wpRoads) {
+			ArrayList<Point2D> pts = road.pts;
+			for(Point2D p: pts)
 				pset.add(p);
+		}
 		uniqueWpRoads = new ArrayList<>(pset);
 	    
 		//checking if the randomly picked points fall into the roads 
 		//in order to find and render only buildings that do not fall into roads
-	    // TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes ~2 seconds on (2.5GCPU 8GRAM)
+	    // (Done)TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes ~2 seconds on (2.5GCPU 8GRAM)
 		validRandomPoints = getValidRandomPoints(randomPoints, roads);
 
 		//voronoi points composed of validRandomPoints, unique roads points and unique wpRoads points
@@ -183,22 +190,8 @@ public class MapGenData {
 	    
         getVoronoiDiagram(voronoiPoints);
 	    
-        //for some vonoroi routine(matlab), the order of faces returned from vonoroi routine is the same as the order of input points.
-        //but for JTS, the order of faces returned from vonoroi routine is not the same as the order of input points.
-        //we need to make them same in order to group them into validRandomPoints, roads and wpRoads for further processing.
-	    // TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 1-2 seconds on (2.5GCPU 8GRAM)
-        ArrayList<ArrayList<Integer>> sameOrder = new ArrayList<>();
-        for(Point2D p : voronoiPoints) {
-	        for(ArrayList<Integer> face: voronoiDiagramFacets) {
-	        	if(inpolygon(p, face, voronoiDiagramVertices)) {
-	        		sameOrder.add(face);
-	        		break;
-	        	}
-	        }
-        }
-		
-        voronoiDiagramFacets = sameOrder;
-		
+        orderVoronoiDiagramFacets();
+
 		int numFacets;		//the number of facets to be processed
 		if(isUrban)
 			numFacets = validRandomPoints.size();
@@ -209,12 +202,13 @@ public class MapGenData {
 		HashSet<Integer> invalidFacetsSmRoads = new HashSet<>();	//indices for those invalid facets near main Roads crossing over smRoads
 		validFacetsIndices = new HashSet<>();
 		
+		/* we don't need to do this because JTS voronoi would return closed polygons already
 		//close open polygons and discard everything that may be outside the map area
 		for (int i = 0; i<numFacets; i++) {
 			ArrayList<Integer> temp = voronoiDiagramFacets.get(i);
 		    if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
 		        voronoiDiagramFacets.get(i).add(temp.get(0));  // closing polygons
-		}
+		}*/
 		
 		int numPoints;	//valid points to be processed
 		if(isUrban)
@@ -228,20 +222,28 @@ public class MapGenData {
 			if(i>=voronoiDiagramFacets.size()) break;
 			
 			ArrayList<Integer> facet = voronoiDiagramFacets.get(i);
+			
+			//eliminates triangular and degenerate cases
+			if(facet.size() <= 4)	//it is 4 because we repeat the last point with the initial point
+				continue;
+			
+			//check if any vertex of the facet is outside of the map area
 			int j;
 			for(j = 0; j < facet.size(); j++)
 				if(!rect.contains(voronoiDiagramVertices.get(facet.get(j))))
 					break;
 			
+			//if all vertices of the facet are inside of the map area, we add the facet to valid list
 		    if(j == facet.size()) validFacetsIndices.add(i);
 		}
 		
 		//find those invalid facets crossing over roads
-	    // TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 1-2 seconds on (2.5GCPU 8GRAM)
-		for(int i = 0; i < numFacets; i++) {    
+	    // (Done)TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 1-2 seconds on (2.5GCPU 8GRAM)
+		for(int i = 0; i < numFacets; i++) {
 			    // checking if this building intersects one of roads
-			    for(int k = 0; k < roads.size(); k++) {
-			    	 Polygon2D p = polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i), roads.get(k));
+			    for(Road road : roads) {
+			    	 //optimization using road bound instead of all points belong to the road
+			    	 Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
 			    	 if(p != null && !p.isEmpty()) {
 			            invalidFacetsRoads.add(i);
 			            break;
@@ -250,17 +252,20 @@ public class MapGenData {
 		}
 
 		// we check if the buildings located close to the main road (Road) fall into the smaller road (smRoad)
-	    // TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 4-7 seconds on (2.5GCPU 8GRAM)
+	    // (Done)TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 4-7 seconds on (2.5GCPU 8GRAM)
 		for(int i = validRandomPoints.size(); i < validRandomPoints.size()+uniqueRoads.size(); i++) {
 			if(i>=voronoiDiagramFacets.size()) break;
 			
 		    if(voronoiDiagramFacets.get(i).size() != 0) {
+		    	/* we don't need to do this because JTS voronoi would return closed polygons already
 				ArrayList<Integer> temp = voronoiDiagramFacets.get(i);
 		    	if (temp.get(0).intValue() != temp.get(temp.size() - 1).intValue())
 		        voronoiDiagramFacets.get(i).add(temp.get(0));  // closing polygons
-		        
-		        for(int k = 0; k < smRoads.size(); k++) {  
-		            Polygon2D p = polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i), smRoads.get(k));
+		        */
+		    	
+		        for(Road road : smRoads) {
+		        	//optimization using road bound instead of all points belong to the road
+		            Polygon2D p = road.polyxpoly(voronoiDiagramVertices, voronoiDiagramFacets.get(i));
 		            if(p != null && !p.isEmpty()) {
 		                invalidFacetsSmRoads.add(i);
 		                break;
@@ -323,9 +328,45 @@ public class MapGenData {
 		}
 	    
 		createBuild();
+		
+		//System.out.println("time="+(new Date().getTime() - old)/1000.0);
 	}
 
-	
+    //for some vonoroi routine(matlab), the order of faces returned from vonoroi routine is the same as the order of input points.
+    //but for JTS, the order of faces returned from vonoroi routine is not the same as the order of input points.
+    //we need to make them same in order to group them into validRandomPoints, roads and wpRoads for further processing.
+    private void orderVoronoiDiagramFacets() {
+    	/*
+	    // (Done)TODO: Optimization. This is an expensive operation. for 3000x2000 map area, it takes 1-2 seconds on (2.5GCPU 8GRAM)
+	    ArrayList<ArrayList<Integer>> sameOrder = new ArrayList<>();
+	    for(Point2D p : voronoiPoints) {
+	        for(ArrayList<Integer> face: voronoiDiagramFacets) {
+	        	if(inpolygon(p, face, voronoiDiagramVertices)) {
+	        		sameOrder.add(face);
+	        		break;
+	        	}
+	        }
+	    }*/
+    	
+    	// improve time complexity from O(NxM) to O(NxSQRT(M)) for large map
+    	ArrayList<ArrayList<Integer>> sameOrder = new ArrayList<>();
+    	Iterator<Point2D> iterVertex=voronoiPoints.iterator();
+    	while(iterVertex.hasNext()) {
+    		Point2D p = iterVertex.next();
+			Iterator<ArrayList<Integer>> iterFace=voronoiDiagramFacets.iterator();
+			while(iterFace.hasNext()) {
+				ArrayList<Integer> face=(ArrayList<Integer>)iterFace.next();
+				if(inpolygon(p, face, voronoiDiagramVertices)) {
+	        		sameOrder.add(face);
+	        		iterFace.remove();
+	        		break;
+	        	}
+			}
+    	}
+    	
+        voronoiDiagramFacets = sameOrder;
+    }
+
 	//construct builds(facets) and nodes(vertices) to be rendered on screen.
 	//construct topology information for deletion operation and other operation such as undo/redo
 	private void createBuild() {
@@ -340,7 +381,8 @@ public class MapGenData {
 			for(int j=0; j<pind.size(); j++)
 				p.addPoint((int)voronoiDiagramVertices.get(pind.get(j)).getX(), (int)voronoiDiagramVertices.get(pind.get(j)).getY());
 			
-			//eliminates triangular and degenerate cases
+			//we can comment out the following code because we already did this right after voronoi routine call.
+			//Eliminates triangular and degenerate cases
 			if(p.npoints > 4)	//it is 4 because we repeat the last point with the initial point
 				builds.add(p);
 			else removed++;
@@ -414,6 +456,7 @@ public class MapGenData {
 	}
 	
 	//find intersections between facet and road
+	@SuppressWarnings("unused")
 	private Polygon2D polyxpoly(ArrayList<Point2D> vertices,
 			ArrayList<Integer> facet, ArrayList<Point2D> road) {
 		SimplePolygon2D p1 = new SimplePolygon2D();
@@ -450,23 +493,30 @@ public class MapGenData {
 	}
 	
 	//find all points fall inside of roads and discard them, return the rest points
-	private ArrayList<Point2D> getValidRandomPoints(ArrayList<Point2D> randomPoints, ArrayList<ArrayList<Point2D>> roads) {
+	private ArrayList<Point2D> getValidRandomPoints(ArrayList<Point2D> randomPoints, ArrayList<Road> roads) {
 		HashSet<Point2D> invalid = new HashSet<>();
 		
 		for(Point2D p : randomPoints)
-			for(ArrayList<Point2D> road : roads) {
+			for(Road road : roads) {
 				/*
 				SimplePolygon2D poly = new SimplePolygon2D(road);
 				if(poly.contains(p)) {
 					invalid.add(p);
 					break;
 				}*/
+				/*
 				//java.awt.geom.Polygon.contains is faster than SimplePolygon2D.contains
 				Polygon poly = new Polygon();
 				for(Point2D pt : road)
 					poly.addPoint((int)pt.getX(), (int)pt.getY());
 				
 				if(poly.contains(p.getX(), p.getY())) {
+					invalid.add(p);
+					break;
+				}*/
+				
+				//further optimize using road bound rather than all points belong to the road
+				if(road.contains(p)) {
 					invalid.add(p);
 					break;
 				}
