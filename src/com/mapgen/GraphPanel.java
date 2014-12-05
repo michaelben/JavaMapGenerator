@@ -32,10 +32,10 @@ public class GraphPanel extends JPanel implements Scrollable {
     
     //we don't use Point/Point2D in Java2D because we need topology information stored in vertex.
     //and we use Polygon/Polygon2D in Java2D for easier graphics operation, draw/fill etc.
-	public boolean isFill = true;
-	public ArrayList<Node> nodes = new ArrayList<>();
-    public ArrayList<Edge> edges;
-	public ArrayList<Polygon> builds = new ArrayList<>();		//valid builds
+	private boolean isFill = true;
+	private ArrayList<Node> nodes = new ArrayList<>();
+    //private ArrayList<Edge> edges;
+	private ArrayList<Polygon> builds = new ArrayList<>();		//valid builds
     
     private Node pick;
     private Polygon polygonPick;
@@ -176,7 +176,8 @@ public class GraphPanel extends JPanel implements Scrollable {
         	
         });
     }
-    
+
+    //our origin is in lower-left corner instead of upper-left corner
     private int transform(int x) {
     	return Param.getMapHeight() - x;
     }

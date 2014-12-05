@@ -1,15 +1,12 @@
 package com.mapgen.map;
 
 import java.awt.Polygon;
-import java.awt.geom.Area;
-import java.awt.geom.Path2D;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Random;
 

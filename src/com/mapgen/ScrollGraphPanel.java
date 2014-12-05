@@ -68,12 +68,15 @@ public class ScrollGraphPanel extends JPanel implements ItemListener {
 	}
 
 	public void setMapSize() {
-		//graphPanel.setPreferredSize(new Dimension(Param.getMapWidth(), Param.getMapHeight()));
-		//columnView.setPreferredWidth(Param.getMapWidth());
-		//rowView.setPreferredHeight(Param.getMapHeight());
+		//we have to set both size and preferred size to make rulers and scrolling work correctly
+		graphPanel.setPreferredSize(new Dimension(Param.getMapWidth(), Param.getMapHeight()));
+		columnView.setPreferredWidth(Param.getMapWidth());
+		rowView.setPreferredHeight(Param.getMapHeight());
+		
 		graphPanel.setSize(new Dimension(Param.getMapWidth(), Param.getMapHeight()));
 		columnView.setWidth(Param.getMapWidth());
 		rowView.setHeight(Param.getMapHeight());
+		
 		graphPanel.setPolygonPick(null);
 	}
 	
